@@ -1,0 +1,120 @@
+services:
+  ollama:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.16}
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    expose:
+      - "11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
+  ollama-model:
+    image: ${OLLAMA_IMAGE:-ollama/ollama:0.40.16}
+    entrypoint: ["/bin/ollama"]
+    command: ["pull", "${LLM_MODEL:-qwen3.5:2b}"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ollama-data:/root/.ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-local-only-admin-pass}
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "false"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./keycloak/support-poc-realm.json:/opt/keycloak/data/import/support-poc-realm.json:ro
+    restart: unless-stopped
+
+  opa:
+    image: openpolicyagent/opa:1.22.4
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-level=info", "/policies"]
+    volumes:
+      - ./policies:/policies:ro
+    expose:
+      - "8181"
+    restart: unless-stopped
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "mcp_server.main"]
+    environment:
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_REALM: support-poc
+      OIDC_CLIENT_ID: agent-bff
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-local-only-agent-bff-secret}
+      MCP_RESOURCE_URL: http://localhost:8002/mcp
+      OPA_URL: http://opa:8181
+      APP_ACTION_SECRET: ${APP_ACTION_SECRET:-local-only-change-this-action-secret-please}
+      DATA_DIR: /data
+      MCP_PORT: "8002"
+    ports:
+      - "127.0.0.1:8002:8002"
+    volumes:
+      - support-data:/data
+    depends_on:
+      - keycloak
+      - opa
+    restart: unless-stopped
+
+  chat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "127.0.0.1"]
+    environment:
+      APP_ORIGIN: http://localhost:8000
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_REALM: support-poc
+      OIDC_CLIENT_ID: agent-bff
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-local-only-agent-bff-secret}
+      OIDC_REDIRECT_URI: http://localhost:8000/auth/callback
+      MCP_INTERNAL_URL: http://mcp:8002/mcp
+      APP_ACTION_SECRET: ${APP_ACTION_SECRET:-local-only-change-this-action-secret-please}
+      LLM_API_KEY: ${LLM_API_KEY:-ollama}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-qwen3.5:2b}
+      LLM_LOCAL: ${LLM_LOCAL:-true}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
+      LLM_TOOL_CALLING_ENABLED: ${LLM_TOOL_CALLING_ENABLED:-true}
+      DATA_DIR: /data
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - support-data:/data
+    depends_on:
+      keycloak:
+        condition: service_started
+      mcp:
+        condition: service_started
+      ollama-model:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  support-data:
+  ollama-data:
