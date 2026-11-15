@@ -2,6 +2,10 @@
 
 Implementación local de un chat conversacional de soporte de TI. Un agente acotado consulta artículos y tickets mediante herramientas MCP; Keycloak autentica a las personas y OPA decide si cada operación está permitida. Los datos son sintéticos.
 
+## Informe técnico
+
+El informe académico de la PoC sigue la estructura del documento de referencia e incluye riesgos OWASP, arquitectura, controles, escenarios y guion de demo: [docs/Informe-PoC-Seguridad-IA.docx](docs/Informe-PoC-Seguridad-IA.docx).
+
 ## Levantar el proyecto
 
 Requisitos: Docker y Docker Compose.
