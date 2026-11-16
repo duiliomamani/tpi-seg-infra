@@ -4,7 +4,7 @@ Implementación local de un chat conversacional de soporte de TI. Un agente acot
 
 ## Informe técnico
 
-El informe académico de la PoC sigue la estructura del documento de referencia e incluye riesgos OWASP, arquitectura, controles, escenarios y guion de demo: [docs/Informe-PoC-Seguridad-IA.docx](docs/Informe-PoC-Seguridad-IA.docx).
+El informe académico de la PoC sigue la estructura del documento de referencia e incluye riesgos OWASP, arquitectura, controles, escenarios y guion de demo: [docs/Informe-PoC-Seguridad-IA.md](docs/Informe-PoC-Seguridad-IA.md).
 
 ## Levantar el proyecto
 
