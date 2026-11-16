@@ -162,6 +162,7 @@
       "lastName": "Colaborador",
       "email": "bob@example.test",
       "realmRoles": ["employee"],
+      "requiredActions": ["CONFIGURE_TOTP"],
       "credentials": [{ "type": "password", "value": "bob-demo-pass", "temporary": false }]
     },
     {

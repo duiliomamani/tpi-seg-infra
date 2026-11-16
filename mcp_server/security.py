@@ -156,3 +156,38 @@ def verify_approval_proof(
     ):
         return None
     return payload
+
+
+def verify_mfa_reset_approval_proof(
+    proof: str,
+    *,
+    subject: str,
+    username: str,
+) -> dict[str, Any] | None:
+    try:
+        encoded, signature_text = proof.split(".", 1)
+        expected = hmac.new(
+            settings.ACTION_SIGNING_SECRET.encode("utf-8"), encoded.encode("ascii"), hashlib.sha256
+        ).digest()
+        supplied = base64.urlsafe_b64decode(signature_text + "=" * (-len(signature_text) % 4))
+        if not hmac.compare_digest(expected, supplied):
+            return None
+        raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
+        payload = json.loads(raw)
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+    expiry = payload.get("exp")
+    if (
+        payload.get("sub") != subject
+        or payload.get("action") != "mfa:reset"
+        or payload.get("username") != username
+        or not isinstance(payload.get("session"), str)
+        or not payload.get("session")
+        or not isinstance(payload.get("action_id"), str)
+        or not payload.get("action_id")
+        or not isinstance(expiry, int)
+        or expiry < time.time()
+        or expiry > time.time() + 300
+    ):
+        return None
+    return payload

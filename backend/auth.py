@@ -172,7 +172,7 @@ async def finish_login(code: str, state: str, state_cookie: str | None) -> UserS
         raise HTTPException(status_code=401, detail="La identidad de los tokens no coincide.")
 
     realm_roles = access_claims.get("realm_access", {}).get("roles", [])
-    roles = [role for role in realm_roles if role in {"employee", "support_l1"}]
+    roles = [role for role in realm_roles if role in {"employee", "support_l1", "support_admin"}]
     session = UserSession(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -261,6 +261,22 @@ def make_approval_proof(session_id: str, subject: str, action_id: str, summary: 
         "action_id": action_id,
         "summary": summary,
         "description": description,
+        "exp": expires_at,
+    }
+    encoded = b64url(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+    signature = hmac.new(settings.ACTION_SIGNING_SECRET.encode("utf-8"), encoded.encode("ascii"), hashlib.sha256).digest()
+    return f"{encoded}.{b64url(signature)}"
+
+
+def make_mfa_reset_approval_proof(session_id: str, subject: str, action_id: str, username: str, expires_at: int) -> str:
+    import json
+
+    payload = {
+        "session": session_id,
+        "sub": subject,
+        "action": "mfa:reset",
+        "action_id": action_id,
+        "username": username,
         "exp": expires_at,
     }
     encoded = b64url(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))

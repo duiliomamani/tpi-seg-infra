@@ -75,3 +75,10 @@ allow if {
 	input.resource.status == "Nuevo"
 	input.resource.confirmed == true
 }
+
+allow if {
+	input.subject.active == true
+	input.action == "mfa:reset"
+	"support_admin" in input.subject.roles
+	input.resource.confirmed == true
+}

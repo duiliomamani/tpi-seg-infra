@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 import time
 from pathlib import Path
 from typing import Literal
@@ -21,13 +23,15 @@ from backend.auth import (
     finish_login,
     get_mcp_access_token,
     make_approval_proof,
+    make_mfa_reset_approval_proof,
     require_csrf,
 )
 from backend.mcp_client import MCPToolFailure, call_support_tool
-from backend.store import initialize
+from backend.store import get_demo_modes, initialize, set_demo_modes
 
 
 initialize()
+logger = logging.getLogger("support.audit")
 
 app = FastAPI(
     title="Support Desk PoC",
@@ -75,6 +79,10 @@ class ConfirmActionInput(BaseModel):
     description: str = Field(min_length=12, max_length=700)
 
 
+class DemoModeInput(BaseModel):
+    mode: Literal["secure", "vulnerable"]
+
+
 def enforce_rate_limit(session: UserSession) -> None:
     now = time.time()
     session.recent_requests = [stamp for stamp in session.recent_requests if now - stamp < 60]
@@ -107,6 +115,7 @@ async def login_callback(request: Request, code: str | None = None, state: str |
 @app.get("/api/me")
 async def me(request: Request) -> dict[str, object]:
     _, session = current_session(request)
+    demo_modes = get_demo_modes()
     return {
         "authenticated": True,
         "name": session.display_name,
@@ -114,9 +123,32 @@ async def me(request: Request) -> dict[str, object]:
         "roles": session.roles,
         "model_configured": settings.LLM_ENABLED,
         "model_local": settings.LLM_LOCAL,
-        "groups_demo_mode": settings.GROUPS_DEMO_MODE,
+        **demo_modes,
+        "demo_control_enabled": settings.DEMO_MODE_CONTROL_ENABLED,
         "csrf_token": session.csrf_token,
     }
+
+
+@app.post("/api/demo/mode")
+async def update_demo_mode(request: Request, body: DemoModeInput) -> dict[str, object]:
+    _, session = current_session(request)
+    require_csrf(request, session)
+    if not settings.DEMO_MODE_CONTROL_ENABLED:
+        raise HTTPException(status_code=404, detail="El control del laboratorio está deshabilitado.")
+    if "support_admin" not in session.roles:
+        raise HTTPException(status_code=403, detail="Sólo soporte administrador puede cambiar el modo del laboratorio.")
+    modes = set_demo_modes(body.mode)
+    logger.info(
+        json.dumps(
+            {
+                "event": "demo_mode_changed",
+                "subject": session.subject,
+                "mode": body.mode,
+            },
+            separators=(",", ":"),
+        )
+    )
+    return {"mode": body.mode, **modes}
 
 
 @app.post("/api/consent/tool")
@@ -147,7 +179,7 @@ async def confirm_action(request: Request, action_id: str, body: ConfirmActionIn
     session_id, session = current_session(request)
     require_csrf(request, session)
     pending = session.pending_actions.get(action_id)
-    if not pending or pending["expires_at"] < time.time():
+    if not pending or pending.get("kind", "ticket") != "ticket" or pending["expires_at"] < time.time():
         session.pending_actions.pop(action_id, None)
         raise HTTPException(status_code=409, detail="La acción venció. Volvé a preparar el ticket.")
     expires_at = min(int(pending["expires_at"]), int(time.time() + 180))
@@ -181,6 +213,49 @@ async def confirm_action(request: Request, action_id: str, body: ConfirmActionIn
         "kind": "message",
         "text": f"Listo, creé el ticket {result.get('ticket_id', 'nuevo')} con estado {result.get('status', 'Nuevo')}.",
         "sources": [],
+    }
+
+
+@app.post("/api/actions/{action_id}/confirm-mfa-reset")
+async def confirm_mfa_reset(request: Request, action_id: str) -> dict[str, object]:
+    session_id, session = current_session(request)
+    require_csrf(request, session)
+    pending = session.pending_actions.get(action_id)
+    if not pending or pending.get("kind") != "mfa_reset" or pending["expires_at"] < time.time():
+        session.pending_actions.pop(action_id, None)
+        raise HTTPException(status_code=409, detail="La solicitud de reset MFA venció. Volvé a iniciarla.")
+    if "support_admin" not in session.roles:
+        raise HTTPException(status_code=403, detail="Sólo soporte administrador puede confirmar el reset MFA.")
+    username = str(pending.get("username", ""))
+    if username not in {"alice", "bob", "soporte"}:
+        session.pending_actions.pop(action_id, None)
+        raise HTTPException(status_code=409, detail="La cuenta sintética no es válida.")
+    expires_at = min(int(pending["expires_at"]), int(time.time() + 180))
+    proof = make_mfa_reset_approval_proof(session_id, session.subject, action_id, username, expires_at)
+    token = await get_mcp_access_token(session)
+    try:
+        result = await call_support_tool(
+            token,
+            "reset_user_mfa",
+            {"username": username, "approval_proof": proof},
+        )
+    except MCPToolFailure as exc:
+        if exc.kind == "forbidden":
+            raise HTTPException(status_code=403, detail="La política no autorizó resetear el MFA de esa cuenta.") from exc
+        if exc.kind == "conflict":
+            raise HTTPException(status_code=409, detail="La confirmación venció o no coincide con la solicitud.") from exc
+        raise HTTPException(status_code=503, detail="No se pudo completar el reset MFA en Keycloak local.") from exc
+    session.pending_actions.pop(action_id, None)
+    removed = int(result.get("otp_credentials_removed", 0))
+    outcome = (
+        f"Se eliminaron {removed} credenciales OTP de Keycloak y se requiere volver a configurarlas."
+        if removed
+        else "La cuenta no tenía una credencial OTP activa; quedó marcada para configurar MFA al próximo ingreso."
+    )
+    return {
+        "kind": "message",
+        "text": f"Reset MFA aplicado en el realm local support-poc para {username}. {outcome}",
+        "sources": [{"id": f"MFA-{username.upper()}", "title": "MFA del realm sintético support-poc"}],
     }
 
 

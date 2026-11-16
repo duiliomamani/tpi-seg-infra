@@ -30,6 +30,15 @@ LLM_LOCAL = env("LLM_LOCAL", "true").lower() == "true"
 LLM_ENABLED = LLM_LOCAL
 LLM_TIMEOUT_SECONDS = float(env("LLM_TIMEOUT_SECONDS", "60" if LLM_LOCAL else "12"))
 LLM_TOOL_CALLING_ENABLED = env("LLM_TOOL_CALLING_ENABLED", "true").lower() == "true"
-GROUPS_DEMO_MODE = env("GROUPS_DEMO_MODE", "secure").lower()
+GROUPS_DEMO_MODE = env("GROUPS_DEMO_MODE", "vulnerable").lower()
 if GROUPS_DEMO_MODE not in {"secure", "vulnerable"}:
     raise ValueError("GROUPS_DEMO_MODE debe ser 'secure' o 'vulnerable'.")
+PROMPT_INJECTION_DEMO_MODE = env("PROMPT_INJECTION_DEMO_MODE", "vulnerable").lower()
+if PROMPT_INJECTION_DEMO_MODE not in {"secure", "vulnerable"}:
+    raise ValueError("PROMPT_INJECTION_DEMO_MODE debe ser 'secure' o 'vulnerable'.")
+DEMO_MODE_CONTROL_ENABLED = env("DEMO_MODE_CONTROL_ENABLED", "false").lower() == "true"
+KEYCLOAK_MFA_RESET_ENABLED = env("KEYCLOAK_MFA_RESET_ENABLED", "false").lower() == "true"
+KEYCLOAK_MFA_ADMIN_CLIENT_ID = env("KEYCLOAK_MFA_ADMIN_CLIENT_ID", "mcp-mfa-operator")
+KEYCLOAK_MFA_ADMIN_CLIENT_SECRET = env(
+    "KEYCLOAK_MFA_ADMIN_CLIENT_SECRET", "local-only-mcp-mfa-operator-secret"
+)

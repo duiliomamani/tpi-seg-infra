@@ -46,6 +46,23 @@ services:
       - ./keycloak/themes:/opt/keycloak/themes:ro
     restart: unless-stopped
 
+  keycloak-mfa-bootstrap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "backend.keycloak_bootstrap"]
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_REALM: support-poc
+      KEYCLOAK_MFA_ADMIN_CLIENT_ID: ${KEYCLOAK_MFA_ADMIN_CLIENT_ID:-mcp-mfa-operator}
+      KEYCLOAK_MFA_ADMIN_CLIENT_SECRET: ${KEYCLOAK_MFA_ADMIN_CLIENT_SECRET:-local-only-mcp-mfa-operator-secret}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-local-only-admin-pass}
+    depends_on:
+      keycloak:
+        condition: service_started
+    restart: "no"
+
   opa:
     image: openpolicyagent/opa:1.22.4
     command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-level=info", "/policies"]
@@ -70,15 +87,23 @@ services:
       OPA_URL: http://opa:8181
       APP_ACTION_SECRET: ${APP_ACTION_SECRET:-local-only-change-this-action-secret-please}
       DATA_DIR: /data
-      GROUPS_DEMO_MODE: ${GROUPS_DEMO_MODE:-secure}
+      GROUPS_DEMO_MODE: ${GROUPS_DEMO_MODE:-vulnerable}
+      PROMPT_INJECTION_DEMO_MODE: ${PROMPT_INJECTION_DEMO_MODE:-vulnerable}
+      KEYCLOAK_MFA_RESET_ENABLED: ${KEYCLOAK_MFA_RESET_ENABLED:-true}
+      KEYCLOAK_MFA_ADMIN_CLIENT_ID: ${KEYCLOAK_MFA_ADMIN_CLIENT_ID:-mcp-mfa-operator}
+      KEYCLOAK_MFA_ADMIN_CLIENT_SECRET: ${KEYCLOAK_MFA_ADMIN_CLIENT_SECRET:-local-only-mcp-mfa-operator-secret}
       MCP_PORT: "8002"
     ports:
       - "127.0.0.1:8002:8002"
     volumes:
       - support-data:/data
     depends_on:
-      - keycloak
-      - opa
+      opa:
+        condition: service_started
+      keycloak:
+        condition: service_started
+      keycloak-mfa-bootstrap:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   chat:
@@ -102,7 +127,9 @@ services:
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
       LLM_TOOL_CALLING_ENABLED: ${LLM_TOOL_CALLING_ENABLED:-true}
       DATA_DIR: /data
-      GROUPS_DEMO_MODE: ${GROUPS_DEMO_MODE:-secure}
+      GROUPS_DEMO_MODE: ${GROUPS_DEMO_MODE:-vulnerable}
+      PROMPT_INJECTION_DEMO_MODE: ${PROMPT_INJECTION_DEMO_MODE:-vulnerable}
+      DEMO_MODE_CONTROL_ENABLED: ${DEMO_MODE_CONTROL_ENABLED:-false}
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
