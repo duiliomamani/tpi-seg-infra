@@ -89,7 +89,7 @@ def verified_subject(access: AccessToken | None) -> dict[str, Any] | None:
         assigned = [assigned]
     return {
         "sub": str(claims.get("sub", "")),
-        "roles": [role for role in roles if role in {"employee", "support_l1"}],
+        "roles": [role for role in roles if role in {"employee", "support_l1", "support_admin"}],
         "assigned_queues": [str(queue) for queue in assigned],
         "active": bool(claims.get("active", True)),
     }

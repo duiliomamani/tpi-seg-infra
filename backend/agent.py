@@ -44,6 +44,19 @@ AGENT_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "list_user_groups",
+            "description": "Consultar grupos sintéticos de una persona. La autorización se aplica en el servidor MCP.",
+            "parameters": {
+                "type": "object",
+                "properties": {"username": {"type": "string", "enum": ["alice", "bob", "soporte"]}},
+                "required": ["username"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "prepare_support_ticket",
             "description": "Preparar un borrador editable; nunca crear el ticket. La persona debe confirmar en la UI.",
             "parameters": {
@@ -62,6 +75,8 @@ AGENT_TOOLS = [
 
 def classify(message: str) -> str:
     normalized = message.casefold()
+    if any(term in normalized for term in ("grupo", "grupos", "group", "groups")):
+        return "list_groups"
     create_request = re.search(
         r"\b(abrir|abrime|abre|abr[ií]|crear|creame|cre[aá]|generar|genera|gener[aá]|solicito|necesito|quiero)\b.{0,45}\bticket(?:s)?\b",
         normalized,
@@ -88,11 +103,9 @@ def _ticket_draft(message: str) -> tuple[str, str]:
     return summary[:120], message.strip()[:700]
 
 
-async def _model_answer(message: str, answer: str, evidence: list[dict[str, str]], session: UserSession) -> tuple[str, str]:
-    if not settings.LLM_API_KEY:
+async def _model_answer(message: str, answer: str, evidence: list[dict[str, str]]) -> tuple[str, str]:
+    if not settings.LLM_ENABLED:
         return answer, "local"
-    if not session.model_consent:
-        return answer, "not-consented"
     payload = {
         "model": settings.LLM_MODEL,
         "temperature": 0.2,
@@ -120,21 +133,20 @@ async def _model_answer(message: str, answer: str, evidence: list[dict[str, str]
         async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT_SECONDS) as client:
             response = await client.post(
                 f"{settings.LLM_BASE_URL}/chat/completions",
-                headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
                 json=payload,
             )
             response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
         if isinstance(content, str) and content.strip():
-            return content.strip()[:2500], "local-consented" if settings.LLM_LOCAL else "external-consented"
+            return content.strip()[:2500], "ollama" if settings.LLM_LOCAL else "external"
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError):
         pass
     return answer, "local-fallback"
 
 
-async def _model_plan(message: str, session: UserSession) -> tuple[str, dict[str, Any]] | None:
-    """Let an opted-in model propose one app-level action; validate it before any MCP call."""
-    if not settings.LLM_API_KEY or not session.model_consent or not settings.LLM_TOOL_CALLING_ENABLED:
+async def _model_plan(message: str) -> tuple[str, dict[str, Any]] | None:
+    """Let the configured model propose one app-level action; validate it before any MCP call."""
+    if not settings.LLM_ENABLED or not settings.LLM_TOOL_CALLING_ENABLED:
         return None
     payload = {
         "model": settings.LLM_MODEL,
@@ -163,7 +175,6 @@ async def _model_plan(message: str, session: UserSession) -> tuple[str, dict[str
         async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT_SECONDS) as client:
             response = await client.post(
                 f"{settings.LLM_BASE_URL}/chat/completions",
-                headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
                 json=payload,
             )
             response.raise_for_status()
@@ -185,6 +196,9 @@ async def _model_plan(message: str, session: UserSession) -> tuple[str, dict[str
             ticket_id = args.get("ticket_id")
             if not isinstance(ticket_id, str) or not TICKET_ID.fullmatch(ticket_id.upper()):
                 return None
+        elif name == "list_user_groups":
+            if set(args) != {"username"} or args.get("username") not in {"alice", "bob", "soporte"}:
+                return None
         elif name == "prepare_support_ticket":
             summary = args.get("summary")
             description = args.get("description")
@@ -200,13 +214,16 @@ async def _model_plan(message: str, session: UserSession) -> tuple[str, dict[str
 
 
 async def respond(message: str, session_id: str, session: UserSession, access_token: str) -> dict[str, Any]:
-    proposal = await _model_plan(message, session)
+    proposal = await _model_plan(message)
     proposed_name, proposed_args = proposal if proposal else (None, {})
-    intent = {
+    tool_intent = {
         "search_kb": "search_kb",
         "get_my_ticket": "get_ticket",
+        "list_user_groups": "list_groups",
         "prepare_support_ticket": "create_ticket",
-    }.get(proposed_name, classify(message))
+    }.get(proposed_name)
+    classified_intent = classify(message)
+    intent = "list_groups" if classified_intent == "list_groups" else tool_intent or classified_intent
     if intent == "search_kb":
         if "search_kb" not in session.consented_tools:
             return {
@@ -228,7 +245,7 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
             excerpts = [f"{item['title']}\n{item['text']}" for item in articles if isinstance(item, dict) and item.get("title")]
             answer = "Encontré estos pasos en la base aprobada:\n\n" + "\n\n".join(excerpts)
             evidence = [{"source_id": item["source_id"], "title": item["title"], "text": item["text"]} for item in articles if isinstance(item, dict) and item.get("source_id")]
-        text, model_status = await _model_answer(message, answer, evidence, session)
+        text, model_status = await _model_answer(message, answer, evidence)
         return {
             "kind": "message",
             "text": text,
@@ -259,6 +276,27 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
             "kind": "message",
             "text": f"El ticket {ticket['id']} figura como {ticket['status']}.\n\n{ticket['summary']}\n{ticket['description']}",
             "sources": [{"id": ticket["id"], "title": "Ticket consultado"}],
+        }
+
+    if intent == "list_groups":
+        proposed_username = proposed_args.get("username") if proposed_name == "list_user_groups" else None
+        match = re.search(r"\b(alice|bob|soporte)\b", message, re.IGNORECASE) if not proposed_username else None
+        username = str(proposed_username or (match.group(1).lower() if match else ""))
+        if username not in {"alice", "bob", "soporte"}:
+            return {"kind": "message", "text": "Decime si querés consultar los grupos de alice, bob o soporte."}
+        try:
+            result = await call_support_tool(access_token, "list_user_groups", {"username": username})
+        except MCPToolFailure as exc:
+            if exc.kind == "forbidden":
+                return {"kind": "message", "text": f"MCP denegó la consulta de grupos de {username}: tu rol no tiene acceso a ese perfil."}
+            return {"kind": "message", "text": "No pude consultar los grupos de esa persona."}
+        groups = result.get("groups", [])
+        if not result.get("available") or not isinstance(groups, list):
+            return {"kind": "message", "text": "No pude consultar los grupos de esa persona."}
+        return {
+            "kind": "message",
+            "text": f"{username} pertenece a estos grupos: {', '.join(str(group) for group in groups)}.",
+            "sources": [{"id": f"GROUPS-{username.upper()}", "title": "Directorio sintético de demo"}],
         }
 
     if intent == "create_ticket":

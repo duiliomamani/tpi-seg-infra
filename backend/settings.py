@@ -24,9 +24,12 @@ OIDC_STATE_COOKIE = "oidc_state"
 SESSION_TTL_SECONDS = 30 * 60
 MAX_CHAT_LENGTH = 1200
 MAX_RESULTS = 5
-LLM_API_KEY = env("LLM_API_KEY", env("OPENAI_API_KEY", ""))
-LLM_BASE_URL = env("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-LLM_MODEL = env("LLM_MODEL", "gpt-4.1-mini")
-LLM_LOCAL = env("LLM_LOCAL", "false").lower() == "true"
+LLM_BASE_URL = "http://ollama:11434/v1"
+LLM_MODEL = env("LLM_MODEL", "qwen3.5:2b")
+LLM_LOCAL = env("LLM_LOCAL", "true").lower() == "true"
+LLM_ENABLED = LLM_LOCAL
 LLM_TIMEOUT_SECONDS = float(env("LLM_TIMEOUT_SECONDS", "60" if LLM_LOCAL else "12"))
 LLM_TOOL_CALLING_ENABLED = env("LLM_TOOL_CALLING_ENABLED", "true").lower() == "true"
+GROUPS_DEMO_MODE = env("GROUPS_DEMO_MODE", "secure").lower()
+if GROUPS_DEMO_MODE not in {"secure", "vulnerable"}:
+    raise ValueError("GROUPS_DEMO_MODE debe ser 'secure' o 'vulnerable'.")

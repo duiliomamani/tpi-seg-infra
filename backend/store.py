@@ -42,6 +42,17 @@ def initialize() -> None:
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 idempotency_key TEXT UNIQUE
             );
+            CREATE TABLE IF NOT EXISTS directory_users (
+                username TEXT PRIMARY KEY,
+                subject_id TEXT NOT NULL UNIQUE,
+                team_id TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS directory_groups (
+                username TEXT NOT NULL,
+                group_name TEXT NOT NULL,
+                PRIMARY KEY (username, group_name),
+                FOREIGN KEY (username) REFERENCES directory_users(username)
+            );
             """
         )
         db.executemany(
@@ -119,6 +130,28 @@ def initialize() -> None:
                 ),
             ],
         )
+        db.executemany(
+            "INSERT OR IGNORE INTO directory_users (username, subject_id, team_id) VALUES (?, ?, ?)",
+            [
+                ("alice", "11111111-1111-4111-8111-111111111111", "engineering"),
+                ("bob", "22222222-2222-4222-8222-222222222222", "finance"),
+                ("soporte", "33333333-3333-4333-8333-333333333333", "it-support"),
+            ],
+        )
+        db.executemany(
+            "INSERT OR IGNORE INTO directory_groups (username, group_name) VALUES (?, ?)",
+            [
+                ("alice", "all-employees"),
+                ("alice", "vpn-users"),
+                ("alice", "engineering"),
+                ("bob", "all-employees"),
+                ("bob", "payroll-review"),
+                ("bob", "finance-read"),
+                ("soporte", "support-l1"),
+                ("soporte", "network-queue"),
+                ("soporte", "directory-admins"),
+            ],
+        )
 
 
 def find_articles(query: str, limit: int = 5) -> list[dict[str, Any]]:
@@ -144,6 +177,22 @@ def find_ticket(ticket_id: str) -> dict[str, Any] | None:
             (ticket_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def find_user_groups(username: str) -> dict[str, Any] | None:
+    normalized = username.strip().casefold()
+    with connect() as db:
+        user = db.execute(
+            "SELECT username, subject_id, team_id FROM directory_users WHERE username = ?",
+            (normalized,),
+        ).fetchone()
+        if not user:
+            return None
+        groups = db.execute(
+            "SELECT group_name FROM directory_groups WHERE username = ? ORDER BY group_name",
+            (normalized,),
+        ).fetchall()
+    return {**dict(user), "groups": [row["group_name"] for row in groups]}
 
 
 def create_ticket(owner_id: str, summary: str, description: str, idempotency_key: str) -> dict[str, Any]:

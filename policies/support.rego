@@ -12,6 +12,10 @@ has_support_role if {
 	"support_l1" in input.subject.roles
 }
 
+has_support_role if {
+	"support_admin" in input.subject.roles
+}
+
 allow if {
 	input.subject.active == true
 	input.action == "kb:read"
@@ -34,6 +38,25 @@ allow if {
 	input.action == "ticket:read"
 	has_support_role
 	input.resource.owner_id == input.subject.sub
+}
+
+allow if {
+	input.subject.active == true
+	input.action == "ticket:read"
+	"support_admin" in input.subject.roles
+}
+
+allow if {
+	input.subject.active == true
+	input.action == "groups:read"
+	has_support_role
+	input.resource.subject_id == input.subject.sub
+}
+
+allow if {
+	input.subject.active == true
+	input.action == "groups:read"
+	"support_admin" in input.subject.roles
 }
 
 allow if {

@@ -2,6 +2,7 @@
   "realm": "support-poc",
   "enabled": true,
   "displayName": "Support Desk PoC",
+  "loginTheme": "soporte",
   "sslRequired": "none",
   "registrationAllowed": false,
   "resetPasswordAllowed": false,
@@ -11,7 +12,8 @@
   "roles": {
     "realm": [
       { "name": "employee", "description": "Puede consultar su información y crear tickets" },
-      { "name": "support_l1", "description": "Puede leer tickets de sus colas asignadas" }
+      { "name": "support_l1", "description": "Puede leer tickets de sus colas asignadas" },
+      { "name": "support_admin", "description": "Puede consultar grupos para operaciones de soporte autorizadas" }
     ]
   },
   "clientScopes": [
@@ -171,7 +173,7 @@
       "lastName": "Soporte L1",
       "email": "soporte@example.test",
       "attributes": { "assigned_queues": ["network"] },
-      "realmRoles": ["support_l1"],
+      "realmRoles": ["support_l1", "support_admin"],
       "credentials": [{ "type": "password", "value": "soporte-demo-pass", "temporary": false }]
     }
   ]

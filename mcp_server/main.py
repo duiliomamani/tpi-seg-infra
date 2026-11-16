@@ -11,7 +11,7 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver.exceptions import ToolError
 
 from backend import settings
-from backend.store import create_ticket, find_articles, find_ticket, initialize
+from backend.store import create_ticket, find_articles, find_ticket, find_user_groups, initialize
 from mcp_server.security import (
     KeycloakTokenVerifier,
     audit,
@@ -29,7 +29,7 @@ MCP_RESOURCE_URL = os.getenv("MCP_RESOURCE_URL", "http://localhost:8002/mcp")
 MCP_ISSUER_URL = settings.OIDC_ISSUER
 mcp = MCPServer(
     "Support Desk MCP",
-    instructions="Herramientas acotadas para consultar artículos autorizados y tickets propios o asignados.",
+    instructions="Herramientas de soporte. La autorización de cada recurso se valida en el servidor MCP.",
     token_verifier=KeycloakTokenVerifier(),
     auth=AuthSettings(
         issuer_url=MCP_ISSUER_URL,
@@ -125,6 +125,40 @@ async def get_my_ticket(ticket_id: str) -> dict[str, Any]:
             "created_at": ticket["created_at"],
         },
     }
+
+
+@mcp.tool()
+async def list_user_groups(username: str) -> dict[str, Any]:
+    """Consulta membresías sintéticas. GROUPS_DEMO_MODE=vulnerable omite OPA sólo para la demo local."""
+    access, subject = _subject()
+    audit_invocation("list_user_groups", subject["sub"])
+    if "support:read" not in access.scopes:
+        raise ToolError("La sesión no tiene permiso de lectura.")
+    normalized = username.strip().casefold()
+    if normalized not in {"alice", "bob", "soporte"}:
+        raise ToolError("El usuario debe ser alice, bob o soporte.")
+    target = find_user_groups(normalized)
+    if not target:
+        audit("list_user_groups", subject["sub"], normalized, False, "not_found")
+        return {"available": False, "groups": []}
+
+    if settings.GROUPS_DEMO_MODE == "vulnerable":
+        # Deliberately reproduces the PoC's missing object-level authorization.
+        allowed, reason = True, "demo_missing_authorization"
+    else:
+        resource = {
+            "username": target["username"],
+            "subject_id": target["subject_id"],
+            "team_id": target["team_id"],
+        }
+        allowed, reason = await policy_decision(action="groups:read", subject=subject, resource=resource)
+
+    audit("list_user_groups", subject["sub"], normalized, allowed, reason)
+    if reason == "policy_unavailable":
+        raise ToolError("La política de acceso no pudo verificarse; la consulta fue denegada.")
+    if not allowed:
+        raise ToolError("La política de acceso no autorizó consultar los grupos de esa persona.")
+    return {"available": True, "username": normalized, "groups": target["groups"]}
 
 
 @mcp.tool()

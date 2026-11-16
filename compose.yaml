@@ -43,6 +43,7 @@ services:
       - "127.0.0.1:8080:8080"
     volumes:
       - ./keycloak/support-poc-realm.json:/opt/keycloak/data/import/support-poc-realm.json:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
     restart: unless-stopped
 
   opa:
@@ -69,6 +70,7 @@ services:
       OPA_URL: http://opa:8181
       APP_ACTION_SECRET: ${APP_ACTION_SECRET:-local-only-change-this-action-secret-please}
       DATA_DIR: /data
+      GROUPS_DEMO_MODE: ${GROUPS_DEMO_MODE:-secure}
       MCP_PORT: "8002"
     ports:
       - "127.0.0.1:8002:8002"
@@ -95,13 +97,12 @@ services:
       OIDC_REDIRECT_URI: http://localhost:8000/auth/callback
       MCP_INTERNAL_URL: http://mcp:8002/mcp
       APP_ACTION_SECRET: ${APP_ACTION_SECRET:-local-only-change-this-action-secret-please}
-      LLM_API_KEY: ${LLM_API_KEY:-ollama}
-      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
       LLM_MODEL: ${LLM_MODEL:-qwen3.5:2b}
       LLM_LOCAL: ${LLM_LOCAL:-true}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
       LLM_TOOL_CALLING_ENABLED: ${LLM_TOOL_CALLING_ENABLED:-true}
       DATA_DIR: /data
+      GROUPS_DEMO_MODE: ${GROUPS_DEMO_MODE:-secure}
     ports:
       - "127.0.0.1:8000:8000"
     volumes:

@@ -37,7 +37,6 @@ class UserSession:
     roles: list[str]
     csrf_token: str = field(default_factory=lambda: secrets.token_urlsafe(32))
     consented_tools: set[str] = field(default_factory=set)
-    model_consent: bool = False
     expires_at: float = field(default_factory=lambda: time.time() + settings.SESSION_TTL_SECONDS)
     pending_actions: dict[str, dict[str, Any]] = field(default_factory=dict)
     recent_requests: list[float] = field(default_factory=list)

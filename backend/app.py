@@ -70,10 +70,6 @@ class ToolConsentInput(BaseModel):
     allowed: bool
 
 
-class ModelConsentInput(BaseModel):
-    allowed: bool
-
-
 class ConfirmActionInput(BaseModel):
     summary: str = Field(min_length=6, max_length=120)
     description: str = Field(min_length=12, max_length=700)
@@ -116,11 +112,9 @@ async def me(request: Request) -> dict[str, object]:
         "name": session.display_name,
         "email": session.email,
         "roles": session.roles,
-        "consented_tools": sorted(session.consented_tools),
-        "model_consent": session.model_consent,
-        "model_configured": bool(settings.LLM_API_KEY),
-        "model_name": settings.LLM_MODEL if settings.LLM_API_KEY else None,
+        "model_configured": settings.LLM_ENABLED,
         "model_local": settings.LLM_LOCAL,
+        "groups_demo_mode": settings.GROUPS_DEMO_MODE,
         "csrf_token": session.csrf_token,
     }
 
@@ -134,14 +128,6 @@ async def set_tool_consent(request: Request, body: ToolConsentInput) -> dict[str
     else:
         session.consented_tools.discard(body.tool)
     return {"consented_tools": sorted(session.consented_tools)}
-
-
-@app.post("/api/consent/model")
-async def set_model_consent(request: Request, body: ModelConsentInput) -> dict[str, bool]:
-    _, session = current_session(request)
-    require_csrf(request, session)
-    session.model_consent = bool(body.allowed and settings.LLM_API_KEY)
-    return {"model_consent": session.model_consent}
 
 
 @app.post("/api/chat")
