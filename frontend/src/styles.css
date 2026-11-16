@@ -326,6 +326,72 @@ body:has(.app-shell) { overflow: hidden; }
   .chat-workspace { height: calc(100vh - 58px); height: calc(100dvh - 58px); }
 }
 
+/* Guided learning: explain the path and control after each mission. */
+.lesson-card { margin-top: 14px; padding: 13px; border: 1px solid #dcefe6; border-radius: 11px; background: linear-gradient(145deg,#fbfffd,#f5fbf8); color: #344253; box-shadow: 0 5px 18px rgba(24,39,68,.05); animation: lesson-enter .3s ease-out both; }
+.lesson-card.vulnerable { border-color: #efc7c4; background: linear-gradient(145deg,#fff8f7,#fff1ef); }
+.lesson-heading { display: flex; align-items: center; gap: 9px; }
+.lesson-icon { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; border-radius: 8px; background: #e9f7ef; color: #247452; font-size: 15px; font-weight: 800; }
+.lesson-card.vulnerable .lesson-icon { background: #fee4e2; color: #b42318; }
+.lesson-heading>div { display: grid; flex: 1; gap: 3px; }
+.lesson-heading small { color: #8491a0; font-size: 8px; font-weight: 800; letter-spacing: .65px; }
+.lesson-heading strong { color: #334254; font-size: 11px; }
+.lesson-mode { flex: 0 0 auto; padding: 4px 7px; border-radius: 99px; font-size: 7px; font-weight: 800; letter-spacing: .5px; }
+.lesson-mode.safe { background: #e3f6eb; color: #267653; }
+.lesson-mode.danger { background: #fee2e0; color: #a62924; }
+.lesson-objective { margin: 10px 0 8px; color: #657286; font-size: 9px; line-height: 1.55; }
+.lesson-flow { display: flex; align-items: stretch; gap: 5px; overflow-x: auto; margin: 0 0 10px; padding: 0 0 5px; list-style: none; scrollbar-width: thin; }
+.lesson-flow li { min-width: 105px; flex: 1 0 auto; display: flex; align-items: center; gap: 6px; padding: 7px; border: 1px solid #e6eaee; border-radius: 7px; background: #fff; color: #6d7888; font-size: 8px; line-height: 1.3; }
+.lesson-flow li span { width: 17px; height: 17px; flex: 0 0 17px; display: grid; place-items: center; border-radius: 50%; background: #edf1f5; color: #607086; font-size: 8px; font-weight: 800; }
+.lesson-flow li:not(:last-child)::after { content: "→"; margin-left: auto; color: #aab3be; font-weight: 800; }
+.lesson-flow li.highlight { border-color: #efaaa5; background: #fff0ef; color: #a53d37; }
+.lesson-flow li.highlight span { background: #f8d5d2; color: #a62924; }
+.lesson-outcome { padding: 9px 10px; border-radius: 8px; background: #eaf7ef; color: #315c48; }
+.lesson-outcome.danger { background: #fee9e7; color: #8e302b; }
+.lesson-outcome strong { display: block; margin-bottom: 3px; font-size: 9px; }
+.lesson-outcome p { margin: 0; font-size: 9px; line-height: 1.55; }
+.lesson-takeaway { margin: 9px 0 0; color: #677487; font-size: 9px; line-height: 1.55; }
+.lesson-takeaway strong { color: #435166; }
+.mobile-missions { display: none; }
+@keyframes lesson-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+[data-theme="dark"] .lesson-card { border-color: #244531; background: linear-gradient(145deg,#121f19,#14221b); color: #e5efe9; }
+[data-theme="dark"] .lesson-card.vulnerable { border-color: #693230; background: linear-gradient(145deg,#2c191a,#241617); }
+[data-theme="dark"] .lesson-heading strong,[data-theme="dark"] .lesson-takeaway strong { color: #e6eef5; }
+[data-theme="dark"] .lesson-objective,[data-theme="dark"] .lesson-takeaway { color: #9ba9b8; }
+[data-theme="dark"] .lesson-flow li { border-color: #263444; background: #17222e; color: #b4c0ce; }
+[data-theme="dark"] .lesson-flow li span { background: #253448; color: #cbd5e1; }
+[data-theme="dark"] .lesson-flow li.highlight { border-color: #70403d; background: #3a2021; color: #ffaaa5; }
+[data-theme="dark"] .lesson-flow li.highlight span { background: #552524; color: #ffb2ac; }
+[data-theme="dark"] .lesson-outcome { background: #183525; color: #a8e0bd; }
+[data-theme="dark"] .lesson-outcome.danger { background: #3b2021; color: #ffb2ac; }
+[data-theme="dark"] .mobile-mission-list button { border-color: #253244; background: #141d29; color: #d5deea; }
+
+@media(max-width:640px) {
+  .welcome-block { padding-top: 38px; }
+  .mobile-missions { flex: 0 0 auto; margin-top: 9px; }
+  .conversation.has-conversation .mobile-missions { margin-bottom: 4px; }
+  .lesson-card { padding: 10px; }
+  .lesson-flow li { min-width: 96px; }
+  .lesson-heading small { font-size: 7px; }
+  .lesson-heading strong { font-size: 10px; }
+  .mobile-missions { display: block; width: min(780px,100%); margin: 9px auto 10px; }
+  .mobile-missions-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; color: #4c596b; }
+  .mobile-missions-heading strong { font-size: 11px; }
+  .mobile-missions-heading span { color: #8c97a7; font-size: 8px; }
+  .mobile-mission-list { display: flex; gap: 7px; overflow-x: auto; padding: 1px 1px 8px; overscroll-behavior-x: contain; scrollbar-width: thin; }
+  .mobile-mission-list button { min-width: 178px; flex: 0 0 178px; display: flex; align-items: center; gap: 7px; padding: 8px; border: 1px solid #e7eaf0; border-radius: 8px; background: #fff; color: #566275; text-align: left; }
+  .mobile-mission-list button>span:nth-child(2) { min-width: 0; flex: 1; display: grid; gap: 3px; }
+  .mobile-mission-list button strong { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-mission-list button small { color: #8995a4; font-size: 7px; }
+  .app-shell[data-demo-mode="vulnerable"] .mobile-mission-list button { border-color: #f0d5d3; background: #fffafa; }
+  [data-theme="dark"] .mobile-missions-heading { color: #e1e8f0; }
+  [data-theme="dark"] .mobile-mission-list button { border-color: #263447; background: #141d29; color: #d5deea; }
+  [data-theme="dark"] .app-shell[data-demo-mode="vulnerable"] .mobile-mission-list button { border-color: #482625; background: #241718; }
+  [data-theme="dark"] .lesson-heading strong { color: #f0f4f9; }
+}
+
+@media(prefers-reduced-motion:reduce) { .lesson-card { animation: none; } }
+
 
 /* Presentation Trigger Buttons */
 .presentation-link-btn {

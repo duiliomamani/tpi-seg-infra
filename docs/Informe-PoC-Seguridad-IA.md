@@ -188,6 +188,8 @@ La configuración `.env.example` inicia globalmente en **Vulnerable**, así cual
 
 El tablero organiza los recorridos como misiones A–F, marca cuáles se iniciaron y muestra etiquetas de OWASP LLM y MCP cuando una misión corresponde a ambas taxonomías. El contador refleja misiones iniciadas; no mide calidad ni seguridad. El color rojo y la alerta animada indican una respuesta que cruzó el límite de confianza o divulgó datos sintéticos; no se disparan sólo por escribir un prompt de ataque. La señal de riesgo entra con un destello breve y mantiene un indicador pulsante mientras el mensaje permanece visible; respeta la preferencia de movimiento reducido del sistema.
 
+Después del resultado, un debrief didáctico presenta el objetivo, un diagrama de pasos y el resultado observado en el modo elegido, seguido de una idea para explicar el control. Los casos B, E y F muestran el camino vulnerable y la mitigación segura; C y D explican que la autorización del ticket y la cuarentena continúan protegidas aunque el laboratorio global esté en rojo. En móvil, las misiones siguen accesibles en una banda horizontal sobre el historial del chat.
+
 ### A · Consulta normal
 
 1. Iniciar sesión como `alice` y preguntar “No puedo conectarme a la VPN desde Windows”. Autorizar `search_kb` en la tarjeta del chat y comprobar que la respuesta incluye fuentes aprobadas como `KB-VPN-WIN`.

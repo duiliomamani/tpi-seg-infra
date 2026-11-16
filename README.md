@@ -55,6 +55,8 @@ Al copiar `.env.example`, ambos casos inician en **Vulnerable**. El modo es glob
 
 Iniciá sesión como `alice`, `bob` o `soporte` para ejecutar las misiones habilitadas por el modo global. Cada misión muestra el caso y un prompt listo para probar. El progreso cuenta intentos, no es una puntuación de seguridad. Todos los datos y cuentas son sintéticos; el caso MFA sí modifica el factor OTP del usuario en el realm local `support-poc`.
 
+Al completar una misión, el chat muestra un debrief con su objetivo, el recorrido entre RAG, agente, MCP, OPA y Keycloak cuando aplica, el resultado del modo ejecutado y una idea corta para explicar la mitigación. Los casos de ticket ajeno y cuarentena aclaran que esos controles siguen activos incluso cuando otros escenarios están en modo vulnerable. En pantallas angostas, la banda horizontal **Misiones** permanece disponible arriba de la conversación.
+
 ### A · Consulta normal
 
 Iniciá sesión como `alice` y preguntá “No puedo conectarme a la VPN desde Windows”. Autorizá `search_kb` en la tarjeta del chat. La respuesta debe citar artículos aprobados como `KB-VPN-WIN`; esto verifica el flujo nominal del asistente.
