@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import Presentation from "./Presentation";
 import LabRoom from "./LabRoom";
-import type { LabMission } from "./lab-types";
+import type { LabMission, TraceEntry } from "./lab-types";
 
 type Profile = {
   authenticated: boolean;
@@ -30,12 +30,13 @@ type ChatResult = {
   message?: string;
   tool?: string;
   sources?: { id: string; title: string; approval_status?: "approved" | "unapproved" }[];
-  risk_event?: "direct_prompt_injection" | "indirect_prompt_injection" | "data_poisoning";
+  risk_event?: "direct_prompt_injection" | "indirect_prompt_injection" | "data_poisoning" | "group_disclosure";
   action_id?: string;
   summary?: string;
   description?: string;
   username?: string;
   expires_at?: number;
+  trace?: TraceEntry[];
 };
 
 type Message = {
@@ -53,7 +54,17 @@ type Message = {
   actionState?: "pending" | "confirmed" | "cancelled";
   riskEvent?: "direct_prompt_injection" | "indirect_prompt_injection" | "data_poisoning" | "group_disclosure";
   learning?: MissionLearning;
+  trace?: TraceEntry[];
 };
+
+function readMissionProgress(key: string): string[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 const MISSIONS: LabMission[] = [
   {
@@ -69,6 +80,18 @@ const MISSIONS: LabMission[] = [
     ],
     secureOutcome: "La búsqueda devuelve la guía de VPN aprobada y evita mezclar artículos ajenos al tema.",
     takeaway: "El modelo redacta la respuesta; la aplicación controla qué evidencia puede recibir.",
+    codeExample: {
+      path: "Concepto de arquitectura · RAG",
+      vulnerable: "# Riesgo conceptual\nevidence = search_documents(query)\nanswer = await llm(prompt, evidence)",
+      secure: "result = await call_support_tool(token, \"search_kb\", {\"query\": query})\nevidence = result[\"items\"]  # MCP ya filtró con OPA\nanswer = await llm(prompt, evidence)",
+      explanation: "El bloque vulnerable es un antipatrón conceptual, no una ruta implementada. En la PoC, MCP/OPA filtran antes de que el LLM reciba la evidencia; el token se queda en el BFF.",
+    },
+    quiz: {
+      question: "¿Quién decide qué documentos puede ver el modelo?",
+      choices: ["El propio modelo", "La aplicación y MCP/OPA antes de construir el contexto", "El documento recuperado"],
+      correctIndex: 1,
+      explanation: "La autorización se aplica antes de enviar evidencia al modelo.",
+    },
   },
   {
     id: "injection", code: "B", risk: "LLM01:2026 · MCP6:2025", title: "El memo hostil",
@@ -104,6 +127,18 @@ const MISSIONS: LabMission[] = [
       evidence: "Invocación de reset_user_mfa y decisión de autorización registrada por MCP.",
       response: "Activar modo Seguro, re-enrolar OTP, repetir el caso y conservar los eventos de auditoría.",
     },
+    codeExample: {
+      path: "mcp_server/main.py · search_kb()",
+      vulnerable: "if article_id == \"KB-MFA-INJECTION\" and demo_mode == \"vulnerable\":\n    allowed = True  # el memo no aprobado cruza al contexto",
+      secure: "allowed, reason = await policy_decision(\n    action=\"kb:read\", subject=subject, resource=resource\n)\n# approved=false => OPA deniega antes de devolver el artículo",
+      explanation: "La instrucción está dentro de contenido no confiable. La defensa primaria es no entregar el memo al agente; MCP vuelve a validar cada acción.",
+    },
+    quiz: {
+      question: "¿Qué permite que el memo dispare reset_user_mfa?",
+      choices: ["El documento tiene instrucciones con prioridad", "El texto no confiable llega al agente y MCP omite autorización/confirmación", "Qwen conoce una clave secreta"],
+      correctIndex: 1,
+      explanation: "La inyección influye en el plan, pero el impacto depende de controles ausentes en el servidor de herramientas.",
+    },
   },
   {
     id: "ticket", code: "C", risk: "LLM02:2026 · MCP07:2025", title: "Ticket ajeno",
@@ -118,6 +153,18 @@ const MISSIONS: LabMission[] = [
     ],
     secureOutcome: "T-203 pertenece a Bob. Alice no recibe el contenido del ticket, incluso con el laboratorio vulnerable.",
     takeaway: "Conocer o adivinar un ID no debe dar acceso al objeto; se autoriza cada recurso.",
+    codeExample: {
+      path: "mcp_server/main.py · get_my_ticket() + policies/support.rego",
+      vulnerable: "# Antipatrón ilustrativo\nticket = find_ticket(ticket_id)\nreturn {\"ticket\": ticket}  # sin comprobar propietario/cola",
+      secure: "allowed, reason = await policy_decision(\n    action=\"ticket:read\", subject=subject, resource=resource\n)\nif not allowed:\n    return {\"available\": False}  # respuesta genérica",
+      explanation: "El ejemplo vulnerable es un antipatrón didáctico; en esta PoC la ruta real aplica OPA y oculta si un ticket ajeno existe.",
+    },
+    quiz: {
+      question: "¿Qué debe comprobar MCP al recibir T-203?",
+      choices: ["Que el ID tenga formato válido solamente", "Que el sujeto pueda leer ese ticket por propietario o cola", "Que Alice escriba ‘por favor’"],
+      correctIndex: 1,
+      explanation: "Autenticar a Alice no autoriza automáticamente todos los tickets.",
+    },
   },
   {
     id: "poisoning", code: "D", risk: "LLM05:2026", title: "Política falsa en el RAG",
@@ -152,6 +199,18 @@ const MISSIONS: LabMission[] = [
       evidence: "Fuente no aprobada marcada como contexto y alerta de contaminación en el chat.",
       response: "Poner la fuente en cuarentena, validar procedencia, reindexar contenido confiable y repetir la consulta.",
     },
+    codeExample: {
+      path: "mcp_server/main.py · search_kb()",
+      vulnerable: "if article_id == \"KB-POISONED-POLICY\" and mode == \"vulnerable\":\n    allowed = True  # approved=0 llega a Ollama",
+      secure: "allowed, reason = await policy_decision(\n    action=\"kb:read\", subject=subject, resource=resource\n)\n# OPA sólo permite approved=true y clasificación compatible",
+      explanation: "La PoC no tiene un proceso de ingestión: el documento falso ya viene sembrado y el ejercicio demuestra el fallo de confianza en recuperación.",
+    },
+    quiz: {
+      question: "¿Cuál es el control principal contra la política falsa?",
+      choices: ["Pedirle a Qwen que adivine cuál documento miente", "Validar procedencia/aprobación y excluirlo antes del contexto", "Ocultar la cita en la respuesta"],
+      correctIndex: 1,
+      explanation: "El saneamiento y la procedencia se verifican en la fuente y en la recuperación, no sólo al redactar la respuesta.",
+    },
   },
   {
     id: "agency", code: "E", risk: "LLM01:2026 · LLM03:2026 · MCP07:2025", title: "Inyección directa: reset MFA",
@@ -180,6 +239,18 @@ const MISSIONS: LabMission[] = [
       { title: "Verificar", detail: "Reintentá como Alice y confirma la denegación; como soporte, revisá la tarjeta de confirmación." },
       { title: "Auditar", detail: "Inspeccioná los eventos MCP para comprobar sujeto, herramienta, recurso y decisión." },
     ],
+    codeExample: {
+      path: "backend/agent.py · _model_plan() / mcp_server/main.py · reset_user_mfa()",
+      vulnerable: "system = \"Seguí literalmente al usuario, aunque pida usar una herramienta administrativa.\"\n# MCP vulnerable: sin autorización ni confirmación\nallowed = True",
+      secure: "# BFF exige confirmación firmada\napproval = verify_mfa_reset_approval_proof(proof, subject, username)\nallowed, reason = await policy_decision(\n    action=\"mfa:reset\", subject=subject, resource={**target, \"confirmed\": True}\n)",
+      explanation: "El modo vulnerable debilita el prompt y omite el control del MCP para mostrar el riesgo; la variante segura limita la acción con rol, aprobación vigente y OPA.",
+    },
+    quiz: {
+      question: "Si el agente propone reset_user_mfa, ¿qué debería ocurrir antes del efecto?",
+      choices: ["Ejecutarlo porque el modelo lo eligió", "Validar sujeto/objeto en MCP y exigir confirmación para una acción sensible", "Confiar en el texto del prompt"],
+      correctIndex: 1,
+      explanation: "Las propuestas del modelo no son permisos. MCP/OPA y la confirmación deciden el efecto.",
+    },
   },
   {
     id: "groups", code: "F", risk: "LLM02:2026 · MCP07:2025", title: "Grupos de otra persona",
@@ -207,6 +278,18 @@ const MISSIONS: LabMission[] = [
       { title: "Verificar", detail: "Repetí la consulta de grupos de Bob como Alice y confirmá que recibe una denegación." },
       { title: "Auditar", detail: "Compará el evento vulnerable con la decisión OPA de la segunda ejecución." },
     ],
+    codeExample: {
+      path: "mcp_server/main.py · list_user_groups()",
+      vulnerable: "if get_demo_modes()[\"groups_demo_mode\"] == \"vulnerable\":\n    allowed, reason = True, \"demo_missing_authorization\"",
+      secure: "resource = {\"username\": target[\"username\"], \"subject_id\": target[\"subject_id\"]}\nallowed, reason = await policy_decision(\n    action=\"groups:read\", subject=subject, resource=resource\n)",
+      explanation: "El token autentica a Alice, pero el control por objeto debe decidir si puede leer el perfil de Bob.",
+    },
+    quiz: {
+      question: "¿Qué describe mejor el BOLA de esta herramienta MCP?",
+      choices: ["La búsqueda de grupos es lenta", "La herramienta acepta un usuario destino sin autorizar el objeto para el sujeto", "El token de Alice no está firmado"],
+      correctIndex: 1,
+      explanation: "La falla está en la autorización a nivel de objeto: Alice consulta un recurso de Bob.",
+    },
   },
 ];
 
@@ -218,22 +301,68 @@ function modeForProfile(profile: Profile | null): DemoMode {
     : "secure";
 }
 
+const TRACE_STATUS: Record<TraceEntry["status"], string> = {
+  info: "INFO",
+  allowed: "PERMITIDO",
+  blocked: "BLOQUEADO",
+  vulnerable: "VULNERABLE",
+  executed: "EJECUTADO",
+  simulated: "SIMULADO",
+};
+
+function TracePanel({ trace }: { trace: TraceEntry[] }) {
+  if (!trace.length) return null;
+  return <details className="execution-trace">
+    <summary><span>◷</span><strong>Traza de ejecución</strong><small>{trace.length} etapas · abrir</small></summary>
+    <ol>{trace.map((entry, index) => <li className={entry.status} key={`${entry.stage}-${index}`}>
+      <span className="trace-index">{index + 1}</span>
+      <div><strong>{entry.stage}<i>{TRACE_STATUS[entry.status]}</i></strong><small>{entry.detail}</small></div>
+    </li>)}</ol>
+  </details>;
+}
+
+function PrivacyDataFlow({ localModel }: { localModel: boolean }) {
+  return <details className="privacy-flow-panel">
+    <summary><span>⌑</span><strong>Privacidad y recorrido de datos</strong><small>ver límites de confianza</small></summary>
+    <div className="privacy-flow-grid">
+      <article><span>1</span><div><strong>Chat → BFF</strong><small>El mensaje y la cookie de sesión llegan al backend local. La cookie no se entrega al modelo.</small></div></article>
+      <article><span>2</span><div><strong>BFF → MCP → OPA</strong><small>El BFF envía el token de acceso y argumentos de herramienta. MCP/OPA autoriza cada recurso; el token no forma parte del prompt.</small></div></article>
+      <article><span>3</span><div><strong>BFF → {localModel ? "Ollama local · Qwen3.5:2b" : "modelo configurado"}</strong><small>Cuando se invoca al modelo, recibe la consulta y sólo los fragmentos autorizados recuperados. La respuesta vuelve al chat.</small></div></article>
+      <article><span>4</span><div><strong>Auditoría</strong><small>Se registran sujeto, herramienta, recurso y decisión. El panel no muestra tokens ni secretos.</small></div></article>
+    </div>
+    <p>Los ejercicios usan documentos, identidades y tickets sintéticos. La comparación y el cuestionario son didácticos; no llaman herramientas ni cambian el modo global.</p>
+  </details>;
+}
+
 function MissionDebrief({
   learning,
   messageId,
   currentMode,
   canControlMode,
   onActivateSecure,
+  trace,
+  localModel,
+  understood,
+  onQuizComplete,
 }: {
   learning: MissionLearning;
   messageId: string;
   currentMode: DemoMode;
   canControlMode: boolean;
   onActivateSecure: () => void;
+  trace?: TraceEntry[];
+  localModel: boolean;
+  understood: boolean;
+  onQuizComplete: (missionId: string) => void;
 }) {
   const mission = MISSIONS.find((item) => item.id === learning.missionId);
   const [activeStep, setActiveStep] = useState(0);
   const [checkedRecovery, setCheckedRecovery] = useState<number[]>([]);
+  const [checkedMfaPreparation, setCheckedMfaPreparation] = useState<number[]>([]);
+  const [showComparison, setShowComparison] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [quizFeedback, setQuizFeedback] = useState("");
   if (!mission) return null;
   const vulnerablePath = learning.mode === "vulnerable" && Boolean(mission.vulnerableOutcome);
   const outcome = vulnerablePath ? mission.vulnerableOutcome ?? mission.secureOutcome : mission.secureOutcome;
@@ -243,6 +372,11 @@ function MissionDebrief({
   const detailId = `lesson-detail-${messageId}`;
   const toggleRecovery = (index: number) => {
     setCheckedRecovery((current) => current.includes(index)
+      ? current.filter((item) => item !== index)
+      : [...current, index]);
+  };
+  const toggleMfaPreparation = (index: number) => {
+    setCheckedMfaPreparation((current) => current.includes(index)
       ? current.filter((item) => item !== index)
       : [...current, index]);
   };
@@ -278,6 +412,35 @@ function MissionDebrief({
         <strong>{vulnerablePath ? "Resultado vulnerable" : "Resultado protegido"}</strong>
         <p>{outcome}</p>
       </div>
+      <div className="lesson-extra-actions">
+        <button type="button" className="lesson-extra-button" aria-expanded={showComparison} onClick={() => setShowComparison((value) => !value)}>
+          {showComparison ? "Ocultar comparación" : "Comparar Vulnerable / Seguro"}
+        </button>
+        {mission.codeExample && <button type="button" className="lesson-extra-button secondary" aria-expanded={showCode} onClick={() => setShowCode((value) => !value)}>
+          {showCode ? "Ocultar código" : "Ver código vulnerable y mitigado"}
+        </button>}
+      </div>
+      {showComparison && <section className="mode-comparison" aria-label="Comparación simulada de ambos modos">
+        <div className="comparison-heading"><div><small>MISMA CONSULTA · DOS CONFIGURACIONES</small><strong>Comparación didáctica de resultados</strong></div><span>SIMULADA</span></div>
+        <p className="comparison-prompt">“{mission.prompt}”</p>
+        <div className="comparison-columns">
+          <article className="comparison-column vulnerable"><small>⚠ VULNERABLE</small>
+            <ol>{(mission.vulnerableFlow ?? mission.flow).map((step, index) => <li key={`v-${mission.id}-${step}`}><strong>{step}</strong><small>{mission.vulnerableStepDetails?.[index] ?? mission.secureStepDetails[index]}</small></li>)}</ol>
+            <p>{mission.vulnerableOutcome ?? "Esta misión mantiene su control activo incluso en el modo global Vulnerable; el intento se deniega."}</p>
+          </article>
+          <article className="comparison-column secure"><small>◇ SEGURO</small>
+            <ol>{(mission.secureFlow ?? mission.flow).map((step, index) => <li key={`s-${mission.id}-${step}`}><strong>{step}</strong><small>{mission.secureStepDetails[index]}</small></li>)}</ol>
+            <p>{mission.secureOutcome}</p>
+          </article>
+        </div>
+        <p className="comparison-safety">Esta vista compara los resultados esperados del laboratorio. No vuelve a ejecutar el agente, no llama MCP y no modifica Keycloak.</p>
+      </section>}
+      {showCode && mission.codeExample && <section className="code-microscope" aria-label="Comparación de código">
+        <div><small>MICROSCOPIO DE CÓDIGO · FRAGMENTOS EDUCATIVOS</small><strong>{mission.codeExample.path}</strong></div>
+        <div className="code-columns"><article className="vulnerable"><small>VULNERABLE / ANTIPATRÓN</small><pre><code>{mission.codeExample.vulnerable}</code></pre></article>
+          <article className="secure"><small>MITIGADO</small><pre><code>{mission.codeExample.secure}</code></pre></article></div>
+        <p>{mission.codeExample.explanation}</p>
+      </section>}
       {mission.recoverySteps && <section className="recovery-lab" aria-label="Pasos de contención y recuperación">
         <div className="recovery-heading"><div><small>AHORA, RECUPERACIÓN</small><strong>Contené el caso y verificá la defensa</strong></div><span>{checkedRecovery.length}/{mission.recoverySteps.length}</span></div>
         <p className="recovery-hint">Marcá cada paso cuando lo completes. Este checklist es local y didáctico.</p>
@@ -291,6 +454,22 @@ function MissionDebrief({
         <div><small>FICHA DIDÁCTICA · SIMULADA</small><strong>¿Qué reportarías?</strong></div>
         <dl><dt>Evento</dt><dd>{mission.incidentReport.event}</dd><dt>Impacto</dt><dd>{mission.incidentReport.impact}</dd><dt>Evidencia</dt><dd>{mission.incidentReport.evidence}</dd><dt>Respuesta</dt><dd>{mission.incidentReport.response}</dd></dl>
         <p>Vista previa para el ejercicio: no crea tickets ni envía información fuera de esta PoC.</p>
+      </section>}
+      {(mission.id === "injection" || mission.id === "agency") && <section className="mfa-safety-note">
+        <div><small>PREPARACIÓN DEL EJERCICIO MFA</small><strong>{checkedMfaPreparation.length}/3 · comprobaciones locales</strong></div>
+        <ul className="mfa-prep-checks">
+          {["Confirmé que estoy usando el realm local support-poc.", "La cuenta Bob pertenece al directorio sintético de la PoC.", "Tengo disponible el camino para volver a enrolar el OTP después del escenario vulnerable."].map((item, index) => <li key={`mfa-prep-${index}`}><label><input type="checkbox" checked={checkedMfaPreparation.includes(index)} onChange={() => toggleMfaPreparation(index)} /><span>{item}</span></label></li>)}
+        </ul>
+        <p>La misión ejecutada en modo Vulnerable puede quitar el OTP de Bob. La comparación de arriba sólo muestra el efecto esperado y no llama a Keycloak.</p>
+        <a href="http://localhost:8080/realms/support-poc/account" target="_blank" rel="noreferrer">Abrir cuenta del realm local ↗</a>
+      </section>}
+      {trace && <TracePanel trace={trace} />}
+      <PrivacyDataFlow localModel={localModel} />
+      {mission.quiz && <section className={`mission-quiz ${understood ? "complete" : ""}`}>
+        <div className="quiz-heading"><div><small>COMPROBÁ LO APRENDIDO</small><strong>{understood ? "Concepto comprendido" : "Pregunta de la misión"}</strong></div><span>{understood ? "✓ COMPLETADO" : "1 PUNTO"}</span></div>
+        <p>{mission.quiz.question}</p>
+        <div className="quiz-choices">{mission.quiz.choices.map((choice, index) => <button type="button" key={`${mission.id}-choice-${index}`} className={selectedAnswer === index ? "selected" : ""} disabled={understood} onClick={() => { setSelectedAnswer(index); setQuizFeedback(index === mission.quiz?.correctIndex ? mission.quiz.explanation : "No todavía. Revisá la traza, el flujo y el control del servidor, y volvé a intentar."); if (index === mission.quiz?.correctIndex) onQuizComplete(mission.id); }}>{String.fromCharCode(65 + index)}. {choice}</button>)}</div>
+        {quizFeedback && <p className={`quiz-feedback ${selectedAnswer === mission.quiz.correctIndex ? "correct" : "incorrect"}`} aria-live="polite">{quizFeedback}</p>}
       </section>}
       <p className="lesson-takeaway"><strong>Idea para explicar:</strong> {mission.takeaway}</p>
       <p className="lab-fiction-note">Ejercicio local con personas y datos sintéticos; no ingreses información real.</p>
@@ -319,7 +498,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [changingDemoMode, setChangingDemoMode] = useState(false);
   const [error, setError] = useState("");
-  const [playedMissions, setPlayedMissions] = useState<string[]>([]);
+  const [playedMissions, setPlayedMissions] = useState<string[]>(() => readMissionProgress("soporte_played_missions"));
+  const [understoodMissions, setUnderstoodMissions] = useState<string[]>(() => readMissionProgress("soporte_understood_missions"));
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const saved = localStorage.getItem("soporte_theme");
     if (saved === "dark" || saved === "light") return saved;
@@ -354,6 +534,14 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("soporte_theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("soporte_played_missions", JSON.stringify(playedMissions));
+  }, [playedMissions]);
+
+  useEffect(() => {
+    localStorage.setItem("soporte_understood_missions", JSON.stringify(understoodMissions));
+  }, [understoodMissions]);
 
   const toggleTheme = () => {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
@@ -459,7 +647,7 @@ export default function App() {
     if (result.kind === "tool_consent") {
       setMessages((current) => [...current, {
         id: crypto.randomUUID(), role: "assistant", text: result.message ?? "",
-        tool: result.tool, resumeMessage: originalMessage, learning,
+        tool: result.tool, resumeMessage: originalMessage, learning, trace: result.trace,
       }]);
       return;
     }
@@ -467,7 +655,7 @@ export default function App() {
       setMessages((current) => [...current, {
         id: crypto.randomUUID(), role: "assistant", text: result.message ?? "",
         actionId: result.action_id, summary: result.summary, description: result.description,
-        actionState: "pending", learning,
+        actionState: "pending", learning, trace: result.trace,
       }]);
       return;
     }
@@ -475,7 +663,7 @@ export default function App() {
       setMessages((current) => [...current, {
         id: crypto.randomUUID(), role: "assistant", text: result.message ?? "",
         actionId: result.action_id, actionType: "mfa_reset", mfaTarget: result.username,
-        actionState: "pending", learning,
+        actionState: "pending", learning, trace: result.trace,
       }]);
       return;
     }
@@ -490,8 +678,12 @@ export default function App() {
     setMessages((current) => [...current, {
       id: crypto.randomUUID(), role: "assistant", text: result.text ?? "",
       sources: result.sources,
-      riskEvent, learning,
+      riskEvent, learning, trace: result.trace,
     }]);
+  };
+
+  const markMissionUnderstood = (missionId: string) => {
+    setUnderstoodMissions((current) => current.includes(missionId) ? current : [...current, missionId]);
   };
 
   const sendToAgent = async (message: string, learning?: MissionLearning) => {
@@ -652,6 +844,7 @@ export default function App() {
       busy={busy}
       missions={MISSIONS}
       playedMissions={playedMissions}
+      understoodMissions={understoodMissions}
       onSwitchMode={switchDemoMode}
       onLaunchMission={launchMission}
       onExit={() => setShowLab(false)}
@@ -687,7 +880,7 @@ export default function App() {
         </button>
         <section className="mission-board" aria-label="Misiones de entrenamiento OWASP LLM y MCP">
           <div className="mission-board-heading">
-            <div><small>CAMPAÑA · NIVEL 1</small><strong>Desafíos OWASP</strong></div>
+            <div><small>CAMPAÑA · NIVEL 1</small><strong>Desafíos OWASP</strong><small>{understoodMissions.length}/{MISSIONS.length} conceptos comprendidos</small></div>
             <span>{playedMissions.length}/{MISSIONS.length}</span>
           </div>
           <div className="mission-progress"><span style={{ width: `${(playedMissions.length / MISSIONS.length) * 100}%` }} /></div>
@@ -704,7 +897,7 @@ export default function App() {
               >
                 <span className="mission-code">{mission.code}</span>
                 <span className="mission-copy"><strong>{mission.title}</strong><small>{mission.risk} · {mission.hint}</small></span>
-                <span className="mission-play">{playedMissions.includes(mission.id) ? "✓" : "↗"}</span>
+                <span className="mission-play">{understoodMissions.includes(mission.id) ? "★" : playedMissions.includes(mission.id) ? "✓" : "↗"}</span>
               </button>
             ))}
           </div>
@@ -784,12 +977,17 @@ export default function App() {
                   {message.actionState === "pending" && <div className="action-footer"><span>{message.actionType === "mfa_reset" ? "Confirmación autenticada · vence en unos minutos" : "La confirmación vence en unos minutos."}</span><div><button className="small-secondary" disabled={busy} onClick={() => void cancelAction(message)}>Cancelar</button><button className="small-primary" disabled={busy} onClick={() => void confirmAction(message)}>{message.actionType === "mfa_reset" ? "Confirmar reset MFA" : "Confirmar creación"} <span>→</span></button></div></div>}
                 </div>}
                 {message.sources && message.sources.length > 0 && <div className="source-list"><span>Fuentes consultadas</span>{message.sources.map((source) => <span className={`source-chip ${source.approval_status === "unapproved" ? "untrusted" : ""}`} key={source.id}><span className="source-icon">▤</span>{source.title}<small>{source.approval_status === "unapproved" ? `NO APROBADA · ${source.id}` : source.id}</small></span>)}</div>}
+                {message.trace && (!message.learning || message.tool) && <TracePanel trace={message.trace} />}
                 {message.role === "assistant" && message.learning && !message.tool && <MissionDebrief
                   learning={message.learning}
                   messageId={message.id}
                   currentMode={currentDemoMode}
                   canControlMode={canControlDemoMode}
                   onActivateSecure={() => void switchDemoMode("secure")}
+                  trace={message.trace}
+                  localModel={profile.model_local}
+                  understood={understoodMissions.includes(message.learning.missionId)}
+                  onQuizComplete={markMissionUnderstood}
                 />}
               </div>
             </article>)}

@@ -280,6 +280,40 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
         "prepare_support_ticket": "create_ticket",
     }.get(proposed_name)
     intent = classified_intent if classified_intent in {"list_groups", "search_kb", "reset_mfa"} else tool_intent or classified_intent
+    role_label = ", ".join(session.roles) or "sin rol de soporte"
+    identity_trace = [{
+        "stage": "Identidad · Keycloak",
+        "status": "info",
+        "detail": f"Sesión autenticada; rol de la sesión: {role_label}. El token queda en el BFF.",
+    }]
+
+    def rag_trace(tool_result: dict[str, Any]) -> list[dict[str, str]]:
+        items = tool_result.get("items")
+        if not isinstance(items, list) or not items:
+            return [{
+                "stage": "MCP · recuperación RAG",
+                "status": "blocked",
+                "detail": "MCP devolvió cero artículos autorizados. Los candidatos denegados no se enumeran en la respuesta.",
+            }]
+        entries: list[dict[str, str]] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            resource_id = str(item.get("source_id", "artículo"))
+            if item.get("approval_status") == "unapproved":
+                status, detail = "vulnerable", f"{resource_id}: un documento no aprobado cruzó la frontera de confianza."
+            else:
+                status, detail = "allowed", f"{resource_id}: MCP autorizó el artículo antes de formar el contexto."
+            entries.append({"stage": "MCP · recuperación RAG", "status": status, "detail": detail})
+        if not entries:
+            entries.append({"stage": "MCP · recuperación RAG", "status": "info", "detail": "No se encontraron candidatos para esta consulta."})
+        return entries
+
+    def model_trace(model_status: str) -> dict[str, str]:
+        if model_status == "ollama":
+            return {"stage": "Ollama · Qwen3.5:2b", "status": "info", "detail": "Recibió la consulta y la evidencia autorizada; no recibió el token de acceso."}
+        return {"stage": "Redacción local", "status": "simulated", "detail": f"Se usó la respuesta de respaldo de la PoC ({model_status}); no se afirmó una llamada real al modelo."}
+
     if intent == "search_kb":
         if "search_kb" not in session.consented_tools:
             return {
@@ -292,8 +326,9 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
         try:
             result = await call_support_tool(access_token, "search_kb", tool_arguments)
         except MCPToolFailure:
-            return {"kind": "message", "text": "No pude consultar la base de conocimiento en este momento. Probá de nuevo o contactá a soporte."}
+            return {"kind": "message", "text": "No pude consultar la base de conocimiento en este momento. Probá de nuevo o contactá a soporte.", "trace": identity_trace + [{"stage": "MCP · search_kb", "status": "blocked", "detail": "La herramienta no respondió; no se entrega evidencia al modelo."}]}
         articles = result.get("items", [])
+        evidence_trace = identity_trace + rag_trace(result)
         if not articles:
             answer = "No encontré un artículo aprobado que responda esa consulta. Si querés, puedo ayudarte a abrir un ticket."
             evidence: list[dict[str, str]] = []
@@ -328,6 +363,11 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
                 ],
                 "model_status": model_status,
                 "risk_event": "data_poisoning",
+                "trace": evidence_trace + [
+                    {"stage": "Ollama · Qwen3.5:2b", "status": "vulnerable", "detail": "La fuente no aprobada llegó como evidencia y contaminó la respuesta."}
+                    if model_status == "ollama" else model_trace(model_status),
+                    {"stage": "Respuesta", "status": "vulnerable", "detail": "La política falsa se presentó como información válida."},
+                ],
             }
         if demo_modes["prompt_injection_demo_mode"] == "vulnerable" and any(item.get("source_id") == "KB-MFA-INJECTION" for item in evidence):
             injected_plan = await _model_plan(message, untrusted_evidence=evidence)
@@ -338,6 +378,11 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
                 # A deterministic fixture keeps the classroom demo repeatable if the small local model declines the call.
                 username = "bob"
                 trigger = "fixture determinístico de inyección indirecta"
+            proposal_trace = {
+                "stage": "Plan del agente",
+                "status": "vulnerable" if injected_plan and injected_plan[0] == "reset_user_mfa" else "simulated",
+                "detail": "Qwen propuso reset_user_mfa a partir del memo." if injected_plan and injected_plan[0] == "reset_user_mfa" else "Qwen no propuso la herramienta; el fixture determinístico hace repetible la clase de riesgo.",
+            }
             try:
                 reset_result = await call_support_tool(access_token, "reset_user_mfa", {"username": username})
             except MCPToolFailure:
@@ -345,6 +390,7 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
                     "kind": "message",
                     "text": f"El memo intentó inducir un reset de MFA, pero MCP lo denegó. Activación: {trigger}.",
                     "sources": [{"id": "KB-MFA-INJECTION", "title": "Memo de recuperación de acceso MFA", "approval_status": "unapproved"}],
+                    "trace": evidence_trace + [proposal_trace, {"stage": "MCP · reset_user_mfa", "status": "blocked", "detail": "La herramienta rechazó el reset; Keycloak no fue modificado."}],
                 }
             removed = int(reset_result.get("otp_credentials_removed", 0))
             effect = (
@@ -360,6 +406,11 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
                     {"id": f"MFA-{username.upper()}", "title": "MFA del realm sintético support-poc"},
                 ],
                 "risk_event": "indirect_prompt_injection",
+                "trace": evidence_trace + [
+                    proposal_trace,
+                    {"stage": "MCP · autorización de MFA", "status": "vulnerable", "detail": "La ruta vulnerable omitió autorización por recurso y confirmación humana."},
+                    {"stage": "Keycloak · support-poc", "status": "executed", "detail": f"La herramienta actuó sobre la cuenta sintética {username}; {effect}"},
+                ],
             }
         if not evidence:
             return {
@@ -367,6 +418,7 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
                 "text": "No encontré una fuente autorizada y relacionada con esa consulta. No voy a completar el resumen con información de otros artículos.",
                 "sources": [],
                 "model_status": "no_authorized_evidence",
+                "trace": evidence_trace + [{"stage": "Ollama · Qwen3.5:2b", "status": "blocked", "detail": "No recibió fragmentos de documentos no autorizados."}],
             }
         text, model_status = await _model_answer(message, answer, evidence)
         return {
@@ -382,6 +434,7 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
                 if isinstance(item, dict) and item.get("source_id")
             ],
             "model_status": model_status,
+            "trace": evidence_trace + [model_trace(model_status), {"stage": "Respuesta", "status": "allowed", "detail": "El chat muestra respuesta y fuentes devueltas por MCP."}],
         }
 
     if intent == "get_ticket":
@@ -389,7 +442,7 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
         match = TICKET_ID.search(message) if not proposed_ticket_id else None
         ticket_id = str(proposed_ticket_id or (match.group(0) if match else ""))
         if not ticket_id:
-            return {"kind": "message", "text": "Decime el identificador del ticket (por ejemplo, T-102) y reviso si está disponible para tu perfil."}
+            return {"kind": "message", "text": "Decime el identificador del ticket (por ejemplo, T-102) y reviso si está disponible para tu perfil.", "trace": identity_trace}
         if "get_my_ticket" not in session.consented_tools:
             return {
                 "kind": "tool_consent",
@@ -399,14 +452,15 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
         try:
             result = await call_support_tool(access_token, "get_my_ticket", {"ticket_id": ticket_id})
         except MCPToolFailure:
-            return {"kind": "message", "text": "No encontré un ticket disponible para tu usuario."}
+            return {"kind": "message", "text": "No encontré un ticket disponible para tu usuario.", "trace": identity_trace + [{"stage": "MCP · get_my_ticket", "status": "blocked", "detail": "La consulta se rechazó; no se expone información del objeto."}]}
         ticket = result.get("ticket")
         if not result.get("available") or not isinstance(ticket, dict):
-            return {"kind": "message", "text": "No encontré un ticket disponible para tu usuario."}
+            return {"kind": "message", "text": "No encontré un ticket disponible para tu usuario.", "trace": identity_trace + [{"stage": "MCP / OPA · ticket:read", "status": "blocked", "detail": "La respuesta genérica no confirma existencia, titular ni contenido del ticket."}]}
         return {
             "kind": "message",
             "text": f"El ticket {ticket['id']} figura como {ticket['status']}.\n\n{ticket['summary']}\n{ticket['description']}",
             "sources": [{"id": ticket["id"], "title": "Ticket consultado"}],
+            "trace": identity_trace + [{"stage": "MCP / OPA · ticket:read", "status": "allowed", "detail": "El propietario o la cola asignada autorizan esta consulta."}, {"stage": "Respuesta", "status": "allowed", "detail": "Se devolvió sólo el ticket dentro del alcance de esta sesión."}],
         }
 
     if intent == "list_groups":
@@ -414,20 +468,25 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
         match = re.search(r"\b(alice|bob|soporte)\b", message, re.IGNORECASE) if not proposed_username else None
         username = str(proposed_username or (match.group(1).lower() if match else ""))
         if username not in {"alice", "bob", "soporte"}:
-            return {"kind": "message", "text": "Decime si querés consultar los grupos de alice, bob o soporte."}
+            return {"kind": "message", "text": "Decime si querés consultar los grupos de alice, bob o soporte.", "trace": identity_trace}
         try:
             result = await call_support_tool(access_token, "list_user_groups", {"username": username})
         except MCPToolFailure as exc:
             if exc.kind == "forbidden":
-                return {"kind": "message", "text": f"MCP denegó la consulta de grupos de {username}: tu rol no tiene acceso a ese perfil."}
-            return {"kind": "message", "text": "No pude consultar los grupos de esa persona."}
+                return {"kind": "message", "text": f"MCP denegó la consulta de grupos de {username}: tu rol no tiene acceso a ese perfil.", "trace": identity_trace + [{"stage": "MCP / OPA · groups:read", "status": "blocked", "detail": "OPA denegó el acceso a nivel de objeto; no devolvió membresías."}]}
+            return {"kind": "message", "text": "No pude consultar los grupos de esa persona.", "trace": identity_trace + [{"stage": "MCP · list_user_groups", "status": "blocked", "detail": "La herramienta rechazó la solicitud."}]}
         groups = result.get("groups", [])
         if not result.get("available") or not isinstance(groups, list):
-            return {"kind": "message", "text": "No pude consultar los grupos de esa persona."}
+            return {"kind": "message", "text": "No pude consultar los grupos de esa persona.", "trace": identity_trace + [{"stage": "MCP · list_user_groups", "status": "blocked", "detail": "El perfil sintético no está disponible."}]}
+        vulnerable_groups = demo_modes["groups_demo_mode"] == "vulnerable"
+        caller_name = session.email.partition("@")[0].casefold()
+        exposed_other_profile = vulnerable_groups and username != caller_name and "support_admin" not in session.roles
         return {
             "kind": "message",
             "text": f"{username} pertenece a estos grupos: {', '.join(str(group) for group in groups)}.",
             "sources": [{"id": f"GROUPS-{username.upper()}", "title": "Directorio sintético de demo"}],
+            **({"risk_event": "group_disclosure"} if exposed_other_profile else {}),
+            "trace": identity_trace + [{"stage": "MCP / autorización de objeto", "status": "vulnerable" if vulnerable_groups else "allowed", "detail": "La ruta vulnerable omitió la decisión OPA por usuario destino." if vulnerable_groups else "OPA autorizó la relación entre sujeto y perfil consultado."}, {"stage": "Directorio sintético", "status": "executed", "detail": f"MCP devolvió {len(groups)} grupo(s) del fixture local."}],
         }
 
     if intent == "reset_mfa":
@@ -444,12 +503,18 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
                 "username": username,
                 "expires_at": expires_at,
             }
+            mfa_trace = identity_trace + [
+                {"stage": "Agente · intención", "status": "info", "detail": "Se solicitó una operación sensible; la propuesta del modelo no ejecuta la acción."},
+                {"stage": "BFF · confirmación", "status": "allowed", "detail": "Se preparó una confirmación autenticada y con vencimiento; Keycloak aún no fue modificado."},
+                {"stage": "MCP / OPA · mfa:reset", "status": "info", "detail": "La autorización se repetirá al confirmar, antes de llamar a Keycloak."},
+            ]
             return {
                 "kind": "pending_mfa_reset",
                 "action_id": action_id,
                 "username": username,
                 "expires_at": expires_at,
                 "message": "El reset modifica MFA en la cuenta sintética del realm local support-poc. Revisá el usuario y confirmá explícitamente la operación.",
+                "trace": mfa_trace,
             }
         trigger = (
             "propuesta del modelo"
@@ -460,10 +525,10 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
             reset_result = await call_support_tool(access_token, "reset_user_mfa", {"username": username})
         except MCPToolFailure as exc:
             if exc.kind == "forbidden":
-                return {"kind": "message", "text": f"MCP/OPA denegó el reset MFA de {username}: no tenés autorización para esa operación."}
+                return {"kind": "message", "text": f"MCP/OPA denegó el reset MFA de {username}: no tenés autorización para esa operación.", "trace": identity_trace + [{"stage": "MCP / OPA · mfa:reset", "status": "blocked", "detail": "El sujeto no tiene permiso para este recurso; Keycloak no fue modificado."}]}
             if exc.kind == "conflict":
-                return {"kind": "message", "text": "MCP requiere una confirmación autenticada antes de ejecutar el reset MFA."}
-            return {"kind": "message", "text": "No se pudo completar el reset MFA en Keycloak local."}
+                return {"kind": "message", "text": "MCP requiere una confirmación autenticada antes de ejecutar el reset MFA.", "trace": identity_trace + [{"stage": "MCP · confirmación", "status": "blocked", "detail": "Falta una prueba de aprobación vigente; Keycloak no fue modificado."}]}
+            return {"kind": "message", "text": "No se pudo completar el reset MFA en Keycloak local.", "trace": identity_trace + [{"stage": "MCP / Keycloak", "status": "blocked", "detail": "La herramienta falló y no informó un cambio confirmado."}]}
         removed = int(reset_result.get("otp_credentials_removed", 0))
         outcome = (
             f"Se eliminaron {removed} credenciales OTP y deberá configurarlas de nuevo."
@@ -480,11 +545,16 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
             ),
             "sources": [{"id": f"MFA-{username.upper()}", "title": "MFA del realm sintético support-poc"}],
             **({"risk_event": "direct_prompt_injection"} if direct_injection else {}),
+            "trace": identity_trace + [
+                {"stage": "Plan del agente", "status": ("vulnerable" if proposed_name == "reset_user_mfa" else "simulated") if direct_injection else "info", "detail": ("Qwen propuso reset_user_mfa ante la instrucción directa." if proposed_name == "reset_user_mfa" else "Qwen no propuso la herramienta; el fixture determinístico completa la demostración.") if direct_injection else "Se preparó una solicitud de reset sobre una cuenta sintética."},
+                {"stage": "MCP / autorización de MFA", "status": "vulnerable", "detail": "La ruta vulnerable omitió rol, autorización por recurso y confirmación."},
+                {"stage": "Keycloak · support-poc", "status": "executed", "detail": f"Reset aplicado a la cuenta sintética {username}; {outcome}"},
+            ],
         }
 
     if intent == "create_ticket":
         if not any(role in session.roles for role in ("employee", "support_l1")):
-            return {"kind": "message", "text": "Tu perfil actual no tiene habilitada la creación de tickets. Contactá a soporte por el canal habitual."}
+            return {"kind": "message", "text": "Tu perfil actual no tiene habilitada la creación de tickets. Contactá a soporte por el canal habitual.", "trace": identity_trace + [{"stage": "BFF · control de rol", "status": "blocked", "detail": "El rol actual no puede preparar tickets."}]}
         if proposed_name == "prepare_support_ticket":
             summary = str(proposed_args["summary"]).strip()
             description = str(proposed_args["description"]).strip()
@@ -505,9 +575,11 @@ async def respond(message: str, session_id: str, session: UserSession, access_to
             "description": description,
             "expires_at": expires_at,
             "message": "Puedo abrir el ticket con este contenido. Revisalo y confirmá la acción para enviarlo a la cola de red.",
+            "trace": identity_trace + [{"stage": "BFF · preparación", "status": "info", "detail": "Se armó un borrador editable; todavía no se creó el ticket."}, {"stage": "Confirmación humana", "status": "info", "detail": "La creación espera revisión y confirmación explícita."}],
         }
 
     return {
         "kind": "message",
         "text": "Puedo ayudarte con VPN, Wi-Fi, conectividad o el estado de un ticket. También puedo preparar un ticket para que lo revises antes de crearlo.",
+        "trace": identity_trace + [{"stage": "Agente", "status": "info", "detail": "No hubo una llamada de herramienta; el asistente ofreció funciones disponibles."}],
     }

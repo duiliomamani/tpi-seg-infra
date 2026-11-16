@@ -211,6 +211,11 @@ async def confirm_action(request: Request, action_id: str, body: ConfirmActionIn
         "kind": "message",
         "text": f"Listo, creé el ticket {result.get('ticket_id', 'nuevo')} con estado {result.get('status', 'Nuevo')}.",
         "sources": [],
+        "trace": [
+            {"stage": "Confirmación autenticada", "status": "allowed", "detail": "El contenido revisado coincide con la aprobación vigente."},
+            {"stage": "MCP / OPA · ticket:create", "status": "allowed", "detail": "La política autorizó crear el ticket para esta sesión."},
+            {"stage": "Cola de soporte", "status": "executed", "detail": "El ticket quedó creado en el fixture local."},
+        ],
     }
 
 
@@ -254,6 +259,11 @@ async def confirm_mfa_reset(request: Request, action_id: str) -> dict[str, objec
         "kind": "message",
         "text": f"Reset MFA aplicado en el realm local support-poc para {username}. {outcome}",
         "sources": [{"id": f"MFA-{username.upper()}", "title": "MFA del realm sintético support-poc"}],
+        "trace": [
+            {"stage": "Confirmación autenticada", "status": "allowed", "detail": "La confirmación vigente corresponde al sujeto y a la cuenta elegida."},
+            {"stage": "MCP / OPA · mfa:reset", "status": "allowed", "detail": "La política autorizó la operación sensible tras validar el rol y el recurso."},
+            {"stage": "Keycloak · support-poc", "status": "executed", "detail": outcome},
+        ],
     }
 
 

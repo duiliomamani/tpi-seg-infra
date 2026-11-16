@@ -76,9 +76,19 @@ Para cambiar OTP, el inicializador crea un cliente de servicio en el realm `mast
 
 Las herramientas de lectura de artículos y tickets requieren una autorización inicial dentro del chat, revocable al cerrar sesión. La consulta de grupos no muestra una tarjeta de consentimiento: el caso demuestra que un prompt o consentimiento del usuario no reemplaza la autorización de servidor. El uso de Ollama queda habilitado por configuración local de la PoC y no requiere API key. La creación del ticket exige revisar y confirmar una tarjeta editable. La prueba de aprobación tiene vencimiento y queda ligada al sujeto, sesión, acción, resumen y descripción; MCP verifica esa prueba y consulta OPA antes de escribir.
 
+### Experiencia didáctica, comparación y evaluación
+
+Cada misión presenta el prompt, el flujo paso a paso y el resultado. La vista **Comparar Vulnerable / Seguro** coloca ambos recorridos juntos con el mismo prompt y explica el impacto esperado. Es una simulación de resultados: no vuelve a llamar al agente ni a MCP y no altera el modo global. Así se puede enseñar el efecto seguro sin repetir un reset real de OTP. La ejecución normal en modo Vulnerable sí mantiene el comportamiento de impacto del laboratorio y puede quitar el OTP del usuario sintético Bob en `support-poc`.
+
+El panel de código muestra fragmentos educativos que contrastan el bypass con el control correspondiente. Cuando la ruta vulnerable no existe en la implementación real —como el acceso a tickets de C— el bloque se etiqueta como antipatrón ilustrativo. Cada misión termina con una pregunta de comprensión; el navegador conserva el progreso de intentos y respuestas correctas en `localStorage`, sin enviarlo al backend.
+
+Las misiones MFA incluyen una lista previa para confirmar realm y cuenta sintéticos, además de los pasos locales de recuperación y re-enrolamiento OTP. La ficha de incidente es una vista previa: no crea un ticket ni envía un reporte.
+
 ### Privacidad, límites y auditoría
 
 El modelo Qwen se ejecuta en Ollama local y recibe la consulta junto con la evidencia que las herramientas ya autorizaron. No se envían tokens al modelo ni se configura una API key externa. Si Ollama no responde, se usa una respuesta determinística local. El chat limita el mensaje a 1.200 caracteres y a 20 por minuto por sesión; la búsqueda devuelve como máximo cinco artículos. Los logs de MCP registran sujeto, herramienta, recurso y decisión, sin tokens, prompts ni descripciones de tickets.
+
+El panel **Privacidad y recorrido de datos** visualiza estas fronteras: navegador y BFF, BFF y MCP/OPA, BFF y Ollama, y eventos de auditoría. La traza de cada respuesta muestra decisiones y efectos observables sin mostrar bearer tokens. Para no revelar objetos denegados, una respuesta segura de RAG no enumera los artículos que MCP filtró.
 
 ## 4 Diseño del agente y del servidor MCP
 

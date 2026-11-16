@@ -14,6 +14,7 @@ type LabRoomProps = {
   busy: boolean;
   missions: LabMission[];
   playedMissions: string[];
+  understoodMissions: string[];
   onSwitchMode: (mode: Mode) => Promise<void>;
   onLaunchMission: (missionId: string) => void;
   onExit: () => void;
@@ -249,6 +250,7 @@ export default function LabRoom({
   busy,
   missions,
   playedMissions,
+  understoodMissions,
   onSwitchMode,
   onLaunchMission,
   onExit,
@@ -271,6 +273,7 @@ export default function LabRoom({
   const currentStep = guidedSteps[currentIndex];
   const modeHasNoExploit = mode === "vulnerable" && !mission?.vulnerableOutcome;
   const attemptedMissionCount = playedMissions.length;
+  const understoodMissionCount = understoodMissions.length;
 
   useEffect(() => {
     setActiveIndex(0);
@@ -316,11 +319,11 @@ export default function LabRoom({
           <div className="lab-user-chip"><span>{userName.slice(0, 1).toUpperCase()}</span><div><strong>{userName}</strong><small>Cuenta sintética de demo</small></div><i>●</i></div>
           <div className="lab-panel-scroll">
             <div className="lab-eyebrow">ENTRENAMIENTO · OWASP LLM + MCP</div>
-            <div className="lab-campaign-heading"><div><small>CAMPAÑA · MISIONES A–F</small><strong>Centro de operaciones</strong></div><span>{attemptedMissionCount}/{missions.length}</span></div>
-            <div className="lab-progress"><span style={{ width: `${missions.length ? attemptedMissionCount / missions.length * 100 : 0}%` }}/></div>
+            <div className="lab-campaign-heading"><div><small>CAMPAÑA · MISIONES A–F</small><strong>Centro de operaciones</strong><small>{understoodMissionCount}/{missions.length} conceptos comprendidos</small></div><span>{attemptedMissionCount}/{missions.length}</span></div>
+            <div className="lab-progress"><span style={{ width: `${missions.length ? understoodMissionCount / missions.length * 100 : 0}%` }}/></div>
             <div className="lab-mission-picker" role="group" aria-label="Elegir misión">
               {missions.map((item) => <button key={item.id} type="button" className={missionId === item.id ? "selected" : ""} aria-pressed={missionId === item.id} onClick={() => setMissionId(item.id)}>
-                <span>{item.code}</span><div><strong>{item.title}</strong><small>{item.risk}</small></div><i>{playedMissions.includes(item.id) ? "✓" : "›"}</i>
+                <span>{item.code}</span><div><strong>{item.title}</strong><small>{item.risk}</small></div><i>{understoodMissions.includes(item.id) ? "★" : playedMissions.includes(item.id) ? "✓" : "›"}</i>
               </button>)}
             </div>
             <div className="lab-mission-title"><span className={vulnerablePath ? "danger" : "safe"}>MISIÓN {mission.code} · {mission.risk}</span><h1>{mission.title}</h1><p>{mission.objective}</p></div>
@@ -343,8 +346,13 @@ export default function LabRoom({
           </div>
           <div className="lab-panel-footer">
             <div className="lab-step-navigation"><button type="button" disabled={currentIndex === 0} onClick={() => selectStage(currentIndex - 1)}>← Anterior</button><button type="button" disabled={currentIndex === guidedSteps.length - 1} onClick={() => selectStage(currentIndex + 1)}>Siguiente →</button></div>
+            {(mission.id === "injection" || mission.id === "agency") && <div className="lab-mfa-preflight">
+              <strong>Antes de ejecutar · impacto MFA</strong>
+              <span>{mode === "vulnerable" ? "En Vulnerable, el prompt puede quitar el OTP de Bob en el realm local support-poc." : "En Seguro, MCP/OPA debe bloquear a Alice o esperar confirmación autenticada de soporte."}</span>
+              <a href="http://localhost:8080/realms/support-poc/account" target="_blank" rel="noreferrer">Ver cuenta local y recuperación ↗</a>
+            </div>}
             <button type="button" className="lab-run-chat" disabled={busy} onClick={() => onLaunchMission(mission.id)}><span>▶</span> Ejecutar en el chat</button>
-            <small>La sala es una simulación visual. El botón abre la misión real en el chat.</small>
+            <small>La escena y la comparación son simuladas; ejecutar la misión aplica el modo activo a los datos locales.</small>
           </div>
         </aside>
 
@@ -359,7 +367,7 @@ export default function LabRoom({
               onSelectZone={selectZone}
             />
           </div>
-          <div className="lab-world-footer"><span><strong>Objetivo actual</strong>{mission.prompt}</span><span><strong>Impacto permitido</strong>Datos sintéticos · servicios locales</span><span><strong>Capas OWASP</strong>{mission.risk}</span></div>
+          <div className="lab-world-footer"><span><strong>Objetivo actual</strong>{mission.prompt}</span><span><strong>Impacto permitido</strong>Datos sintéticos · servicios locales</span><span><strong>Progreso didáctico</strong>{understoodMissionCount}/{missions.length} conceptos</span><span><strong>Capas OWASP</strong>{mission.risk}</span></div>
         </section>
       </div>
     </main>
