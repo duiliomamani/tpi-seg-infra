@@ -91,7 +91,7 @@ const MISSIONS: LabMission[] = [
     secureOutcome: "El memo queda en cuarentena antes del contexto; MCP/OPA también deniega un reset no autorizado.",
     takeaway: "El texto de un documento no concede permisos. La autorización se vuelve a comprobar en el servidor.",
     recoverySteps: [
-      { title: "Contener", detail: "Soporte activa el modo Seguro desde el selector global del laboratorio." },
+      { title: "Contener", detail: "Cualquier persona autenticada puede activar el modo Seguro desde el selector global del laboratorio." },
       { title: "Recuperar", detail: "Bob inicia sesión en el Keycloak local y vuelve a enrolar su OTP." },
       { title: "Verificar", detail: "Repetí la consulta: el memo debe quedar fuera del contexto y no debe ejecutarse ningún reset." },
       { title: "Auditar", detail: "Revisá los logs de invocación y autorización de MCP para reconstruir la acción." },
@@ -153,7 +153,7 @@ const MISSIONS: LabMission[] = [
     secureOutcome: "A Alice se le deniega. Soporte administrador necesita revisar y confirmar la acción antes del cambio.",
     takeaway: "Una herramienta sensible requiere permisos mínimos, control por objeto y aprobación explícita.",
     recoverySteps: [
-      { title: "Contener", detail: "Activá modo Seguro para volver a exigir rol, decisión OPA y confirmación." },
+      { title: "Contener", detail: "Activá modo Seguro desde el selector global para volver a exigir rol, decisión OPA y confirmación." },
       { title: "Recuperar", detail: "Si el OTP se eliminó, el usuario sintético vuelve a enrolarlo en Keycloak local." },
       { title: "Verificar", detail: "Reintentá como Alice y confirma la denegación; como soporte, revisá la tarjeta de confirmación." },
       { title: "Auditar", detail: "Inspeccioná los eventos MCP para comprobar sujeto, herramienta, recurso y decisión." },
@@ -181,7 +181,7 @@ const MISSIONS: LabMission[] = [
     secureOutcome: "OPA deniega a Alice. Soporte puede consultar perfiles sintéticos para una tarea autorizada.",
     takeaway: "Validar identidad no alcanza: el MCP debe autorizar quién puede consultar cada usuario.",
     recoverySteps: [
-      { title: "Contener", detail: "Activá modo Seguro para volver a exigir la decisión por recurso en OPA." },
+      { title: "Contener", detail: "Activá modo Seguro desde el selector global para volver a exigir la decisión por recurso en OPA." },
       { title: "Verificar", detail: "Repetí la consulta de grupos de Bob como Alice y confirmá que recibe una denegación." },
       { title: "Auditar", detail: "Compará el evento vulnerable con la decisión OPA de la segunda ejecución." },
     ],
@@ -259,7 +259,7 @@ function MissionDebrief({
         <p className="recovery-hint">Marcá cada paso cuando lo completes. Este checklist es local y didáctico.</p>
         <ol className="recovery-list">{mission.recoverySteps.map((step, index) => <li key={`${mission.id}-recovery-${step.title}`}>
           <label><input type="checkbox" checked={checkedRecovery.includes(index)} onChange={() => toggleRecovery(index)} /><span><strong>{step.title}</strong><small>{step.detail}</small></span></label>
-          {index === 0 && <div className="recovery-action"><button type="button" className="lesson-step-nav primary" onClick={onActivateSecure} disabled={!canControlMode || currentMode === "secure"}>{currentMode === "secure" ? "Modo Seguro activo" : canControlMode ? "Activar modo Seguro" : "Requiere soporte administrador"}</button><small>{currentMode === "secure" ? "El modo global ya está protegido." : "Solo soporte administrador puede cambiar el modo global."}</small></div>}
+          {index === 0 && <div className="recovery-action"><button type="button" className="lesson-step-nav primary" onClick={onActivateSecure} disabled={!canControlMode || currentMode === "secure"}>{currentMode === "secure" ? "Modo Seguro activo" : canControlMode ? "Activar modo Seguro" : "Control deshabilitado"}</button><small>{currentMode === "secure" ? "El modo global ya está protegido." : canControlMode ? "Cualquier perfil autenticado puede cambiar el modo global en esta PoC local." : "El selector está deshabilitado en la configuración."}</small></div>}
           {(mission.id === "injection" || mission.id === "agency") && index === 1 && <div className="recovery-action"><a className="lesson-step-nav" href="http://localhost:8080/realms/support-poc/account" target="_blank" rel="noreferrer">Abrir cuenta local de Keycloak ↗</a><small>Iniciá sesión como Bob para volver a enrolar el OTP sintético.</small></div>}
         </li>)}</ol>
       </section>}
@@ -613,7 +613,7 @@ export default function App() {
   const vulnerableInjectionDemo = profile.prompt_injection_demo_mode === "vulnerable";
   const vulnerableDemo = vulnerableGroupsDemo || vulnerableInjectionDemo;
   const currentDemoMode = modeForProfile(profile);
-  const canControlDemoMode = profile.demo_control_enabled && profile.roles.includes("support_admin");
+  const canControlDemoMode = profile.demo_control_enabled;
   if (showLab) {
     return <LabRoom
       userName={profile.name}
@@ -696,8 +696,8 @@ export default function App() {
             <span className={`status-dot ${vulnerableDemo ? "vulnerable" : ""}`} /> {vulnerableDemo ? "Demo vulnerable" : "Modo protegido"}
             <span className="topbar-divider" />
             {profile.demo_control_enabled && <div className="demo-mode-toggle" role="group" aria-label="Modo del laboratorio">
-              <button type="button" className={currentDemoMode === "secure" ? "selected" : ""} disabled={!canControlDemoMode || changingDemoMode || busy} onClick={() => void switchDemoMode("secure")} title={canControlDemoMode ? "Activar controles de mitigación" : "Sólo soporte administrador puede cambiar el modo"}>◇ Seguro</button>
-              <button type="button" className={currentDemoMode === "vulnerable" ? "selected danger" : ""} disabled={!canControlDemoMode || changingDemoMode || busy} onClick={() => void switchDemoMode("vulnerable")} title={canControlDemoMode ? "Activar escenarios vulnerables con datos sintéticos" : "Sólo soporte administrador puede cambiar el modo"}>⚠ Vulnerable</button>
+              <button type="button" className={currentDemoMode === "secure" ? "selected" : ""} aria-pressed={currentDemoMode === "secure"} disabled={!canControlDemoMode || changingDemoMode || busy} onClick={() => void switchDemoMode("secure")} title={canControlDemoMode ? "Activar controles de mitigación para todas las sesiones" : "El selector está deshabilitado en la configuración"}>◇ Seguro</button>
+              <button type="button" className={currentDemoMode === "vulnerable" ? "selected danger" : ""} aria-pressed={currentDemoMode === "vulnerable"} disabled={!canControlDemoMode || changingDemoMode || busy} onClick={() => void switchDemoMode("vulnerable")} title={canControlDemoMode ? "Activar escenarios vulnerables con datos sintéticos para todas las sesiones" : "El selector está deshabilitado en la configuración"}>⚠ Vulnerable</button>
             </div>}
             <span className="topbar-divider" />
             <button type="button" className="topbar-lab-btn" onClick={() => setShowLab(true)} title="Abrir sala interactiva" aria-label="Abrir sala interactiva">◩ <span>Sala</span></button>

@@ -135,8 +135,6 @@ async def update_demo_mode(request: Request, body: DemoModeInput) -> dict[str, o
     require_csrf(request, session)
     if not settings.DEMO_MODE_CONTROL_ENABLED:
         raise HTTPException(status_code=404, detail="El control del laboratorio está deshabilitado.")
-    if "support_admin" not in session.roles:
-        raise HTTPException(status_code=403, detail="Sólo soporte administrador puede cambiar el modo del laboratorio.")
     modes = set_demo_modes(body.mode)
     logger.info(
         json.dumps(

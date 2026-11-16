@@ -288,7 +288,7 @@ export default function LabRoom({
             <button type="button" disabled={changingMode || busy || mode === "secure"} className={mode === "secure" ? "selected" : ""} onClick={() => void onSwitchMode("secure")}>Seguro</button>
             <button type="button" disabled={changingMode || busy || mode === "vulnerable"} className={mode === "vulnerable" ? "selected vulnerable" : ""} onClick={() => void onSwitchMode("vulnerable")}>Vulnerable</button>
           </div>}
-          {!canChangeMode && <span className="lab-mode-hint">Modo global · cambio reservado a soporte</span>}
+          {!canChangeMode && <span className="lab-mode-hint">Selector de modo deshabilitado</span>}
           <button type="button" className="lab-exit-button" onClick={onExit}>← <span>Volver al chat</span></button>
         </div>
       </header>
