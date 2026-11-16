@@ -36,6 +36,9 @@ if GROUPS_DEMO_MODE not in {"secure", "vulnerable"}:
 PROMPT_INJECTION_DEMO_MODE = env("PROMPT_INJECTION_DEMO_MODE", "vulnerable").lower()
 if PROMPT_INJECTION_DEMO_MODE not in {"secure", "vulnerable"}:
     raise ValueError("PROMPT_INJECTION_DEMO_MODE debe ser 'secure' o 'vulnerable'.")
+DATA_POISONING_DEMO_MODE = env("DATA_POISONING_DEMO_MODE", "vulnerable").lower()
+if DATA_POISONING_DEMO_MODE not in {"secure", "vulnerable"}:
+    raise ValueError("DATA_POISONING_DEMO_MODE debe ser 'secure' o 'vulnerable'.")
 DEMO_MODE_CONTROL_ENABLED = env("DEMO_MODE_CONTROL_ENABLED", "false").lower() == "true"
 KEYCLOAK_MFA_RESET_ENABLED = env("KEYCLOAK_MFA_RESET_ENABLED", "false").lower() == "true"
 KEYCLOAK_MFA_ADMIN_CLIENT_ID = env("KEYCLOAK_MFA_ADMIN_CLIENT_ID", "mcp-mfa-operator")

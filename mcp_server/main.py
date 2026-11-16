@@ -64,7 +64,11 @@ async def search_kb(query: str, category: str | None = None) -> dict[str, Any]:
     if category and (len(category) > 40 or not re.fullmatch(r"[a-záéíóúñ_-]+", category.lower())):
         raise ToolError("La categoría no es válida.")
 
-    candidates = find_articles(query, limit=12, include_unapproved_ids={"KB-MFA-INJECTION"})
+    candidates = find_articles(
+        query,
+        limit=12,
+        include_unapproved_ids={"KB-MFA-INJECTION", "KB-POISONED-POLICY"},
+    )
     if category:
         candidates = [item for item in candidates if item["category"] == category.lower()]
     results: list[dict[str, str]] = []
@@ -75,9 +79,13 @@ async def search_kb(query: str, category: str | None = None) -> dict[str, Any]:
             "team": article["team"],
             "approved": bool(article["approved"]),
         }
-        if article["id"] == "KB-MFA-INJECTION" and get_demo_modes()["prompt_injection_demo_mode"] == "vulnerable":
+        demo_modes = get_demo_modes()
+        if article["id"] == "KB-MFA-INJECTION" and demo_modes["prompt_injection_demo_mode"] == "vulnerable":
             # Deliberately lets an unapproved fixture cross the trust boundary in this local demo.
             allowed, reason = True, "demo_untrusted_context"
+        elif article["id"] == "KB-POISONED-POLICY" and demo_modes["data_poisoning_demo_mode"] == "vulnerable":
+            # Simulates a poisoned, unapproved source reaching RAG; no ingestion system is present.
+            allowed, reason = True, "demo_unapproved_poisoning"
         else:
             allowed, reason = await policy_decision(action="kb:read", subject=subject, resource=resource)
         audit("search_kb", subject["sub"], article["id"], allowed, reason)
@@ -89,6 +97,7 @@ async def search_kb(query: str, category: str | None = None) -> dict[str, Any]:
                     "source_id": article["id"],
                     "title": article["title"],
                     "text": article["body"][:1200],
+                    "approval_status": "approved" if article["approved"] else "unapproved",
                 }
             )
         if len(results) == 5:

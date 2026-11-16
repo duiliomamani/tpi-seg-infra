@@ -584,3 +584,11 @@ body:has(.app-shell) { overflow: hidden; }
   border-color: var(--blue);
   color: var(--blue);
 }
+
+.source-chip.untrusted { border-color: #e78a82; background: #fff1f0; color: #9d342e; }
+.source-chip.untrusted small { color: #be514a; font-weight: 800; }
+.threat-signal.data_poisoning { border-color: #d38b45; background: linear-gradient(105deg,#fff5e8,#fffdfa); color: #875017; }
+.data_poisoning .threat-signal-icon { background: #c57b16; }
+:root[data-theme="dark"] .source-chip.untrusted { border-color: #85413d; background: #32191a; color: #ffb4ae; }
+:root[data-theme="dark"] .source-chip.untrusted small { color: #ff938b; }
+:root[data-theme="dark"] .app-shell[data-demo-mode="vulnerable"] .threat-signal.data_poisoning { background: linear-gradient(105deg,#302515,#241e17); border-color: #765b2f; color: #f3ca82; }

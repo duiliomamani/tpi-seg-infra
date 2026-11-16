@@ -187,8 +187,8 @@ const slides = [
               <ShieldCheck size={32} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white mb-1">Guardrails (Prompt & Código)</h3>
-              <p className="text-slate-400 text-sm">Validaciones programáticas fuera del modelo para bloquear patrones maliciosos.</p>
+              <h3 className="text-lg font-bold text-white mb-1">Guardrails y salida segura</h3>
+              <p className="text-slate-400 text-sm">Valida esquemas, allowlists y límites; la UI representa la salida como texto, sin ejecutarla como HTML. No promete filtrar toda inyección semántica.</p>
             </div>
           </div>
 
@@ -207,8 +207,8 @@ const slides = [
               <Database size={32} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white mb-1">Saneamiento de Información</h3>
-              <p className="text-slate-400 text-sm">Filtrado y enmascaramiento de datos peligrosos antes de inyectarlos al contexto del LLM.</p>
+              <h3 className="text-lg font-bold text-white mb-1">Aprobación y cuarentena</h3>
+              <p className="text-slate-400 text-sm">El estado de aprobación se comprueba antes del contexto. La PoC no valida firma/hash ni detecta semánticamente todas las instrucciones maliciosas.</p>
             </div>
           </div>
 

@@ -35,14 +35,14 @@ const PATHS: Record<string, { secure: ZoneId[]; vulnerable: ZoneId[] }> = {
   baseline: { secure: ["user", "source", "mcp", "agent"], vulnerable: ["user", "source", "mcp", "agent"] },
   injection: { secure: ["user", "source", "opa", "audit"], vulnerable: ["user", "source", "agent", "mcp", "keycloak"] },
   ticket: { secure: ["user", "mcp", "opa", "audit"], vulnerable: ["user", "mcp", "opa", "audit"] },
-  poisoning: { secure: ["user", "source", "opa", "audit"], vulnerable: ["user", "source", "opa", "audit"] },
+  poisoning: { secure: ["user", "source", "opa", "audit"], vulnerable: ["user", "source", "agent", "data", "audit"] },
   agency: { secure: ["user", "mcp", "opa", "approval"], vulnerable: ["user", "agent", "mcp", "keycloak"] },
   groups: { secure: ["user", "mcp", "opa", "audit"], vulnerable: ["user", "mcp", "data", "audit"] },
 };
 
 const ZONE_COPY: Record<ZoneId, string> = {
   user: "Keycloak autentica a la persona. Su identidad permite iniciar la sesión, pero cada objeto y acción igual requieren autorización.",
-  source: "RAG recupera artículos y memos. Una fuente no aprobada es contenido no confiable, no una orden del sistema.",
+  source: "RAG recupera artículos y memos. En el modo seguro, aprobación y procedencia se verifican antes de pasar evidencia al modelo.",
   agent: "Qwen interpreta la consulta y el contexto. Puede proponer una herramienta, pero no debe decidir permisos.",
   mcp: "El servidor MCP recibe la llamada tipada. Aquí se vuelven a comprobar sujeto, acción, recurso y argumentos.",
   opa: "OPA aplica la política al recurso concreto. En modo seguro una denegación detiene el flujo antes del efecto.",
@@ -75,6 +75,7 @@ function recoveryZoneFor(missionId: string, index: number): ZoneId {
     injection: ["opa", "keycloak", "source", "audit"],
     agency: ["opa", "keycloak", "approval", "audit"],
     groups: ["opa", "opa", "audit"],
+    poisoning: ["source", "opa", "source", "audit"],
   };
   return zones[missionId]?.[index] ?? "audit";
 }
@@ -96,6 +97,7 @@ function RoomScene({
   const activeFlowIndex = Math.min(activeIndex, Math.max(0, path.length - 1));
   const revealInjection = mission.id === "injection" && vulnerablePath && activeIndex >= 1 && activeIndex <= 3;
   const revealQuarantine = mission.id === "injection" && !vulnerablePath && activeIndex === 1;
+  const revealPoisoning = mission.id === "poisoning" && activeIndex >= 1;
   const revealGroupLeak = mission.id === "groups" && vulnerablePath && activeIndex >= 2;
 
   return (
@@ -212,12 +214,28 @@ function RoomScene({
           <text x="18" y="84" className="evidence-line">del contexto del modelo (approved=0).</text>
           <text x="326" y="29" textAnchor="end" className="evidence-tag safe">BLOQUEADO</text>
         </g>}
+        {revealPoisoning && vulnerablePath && <g className="svg-evidence" transform="translate(334 78)">
+          <rect width="370" height="139" rx="12" fill="#291617" stroke="#ff625d" strokeWidth="3"/>
+          <text x="18" y="27" className="evidence-tag">FUENTE NO APROBADA · KB-POISONED-POLICY</text>
+          <text x="18" y="59" className="evidence-line">“Los viernes no hay guardias</text>
+          <text x="18" y="83" className="evidence-line">obligatorias.”</text>
+          <text x="18" y="113" className="evidence-tag">POLÍTICA FALSA · LLEGA A QWEN</text>
+          <text x="347" y="27" textAnchor="end" className="evidence-tag">CONTAMINADO</text>
+        </g>}
+        {revealPoisoning && !vulnerablePath && <g className="svg-evidence quarantine" transform="translate(334 78)">
+          <rect width="370" height="112" rx="12" fill="#14231e" stroke="#43d69d" strokeWidth="3"/>
+          <text x="18" y="29" className="evidence-tag safe">CUARENTENA · KB-POISONED-POLICY</text>
+          <text x="18" y="60" className="evidence-line">approved=0 · OPA deniega</text>
+          <text x="18" y="84" className="evidence-line">No llega al contexto de Qwen.</text>
+          <text x="348" y="29" textAnchor="end" className="evidence-tag safe">BLOQUEADO</text>
+        </g>}
       </svg>
       <div className={`room-scene-status ${vulnerablePath ? "danger" : "safe"}`}>
         <span className="room-status-pulse"/>
         <div><strong>{vulnerablePath ? "RUTA VULNERABLE" : "RUTA PROTEGIDA"}</strong><small>{vulnerablePath ? "El modo de demo deja pasar el efecto hasta datos sintéticos." : "El control aplicable detiene el recorrido antes del efecto."}</small></div>
       </div>
       {revealGroupLeak && <div className="room-evidence-caption danger"><small>EFECTO OBSERVABLE</small><strong>La consulta de grupos expone el recurso de Bob a Alice</strong><span>La falla a demostrar es MCP07:2025 / BOLA; la frase “ignorá las reglas” no reemplaza el control del servidor.</span></div>}
+      {mission.id === "poisoning" && vulnerablePath && activeIndex >= 2 && <div className="room-evidence-caption danger"><small>EFECTO OBSERVABLE</small><strong>Qwen responde con una política sintética falsa</strong><span>La falla es confiar en KB-POISONED-POLICY sin revisar procedencia ni aprobación.</span></div>}
       <div className="room-zone-inspector"><span>{POSITIONS[activeZone].tag}</span><div><strong>{POSITIONS[activeZone].title}</strong><small>{ZONE_COPY[activeZone]}</small></div></div>
     </div>
   );
