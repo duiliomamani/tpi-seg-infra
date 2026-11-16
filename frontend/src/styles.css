@@ -7,3 +7,212 @@
 
 
 @media(max-width:640px){.sidebar-bottom{margin-left:0}.sidebar .brand-lockup{margin-right:0}}
+
+
+/* ==========================================================================
+   THEME TOGGLE BUTTON & DARK MODE
+   ========================================================================== */
+
+.theme-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: inherit;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.theme-toggle-btn:hover {
+  transform: scale(1.08);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.login-screen .theme-toggle-btn {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 16px;
+  background: #ffffff;
+  border-color: #e1e6ed;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+}
+
+/* Explicit data-theme="dark" */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f0f4f9;
+  --muted: #8896a7;
+  --line: #1c2636;
+  --pale: #141d2a;
+  color: #f0f4f9;
+  background: #0b1017;
+}
+
+[data-theme="dark"] .app-shell { background: #0e141d; color: #f0f4f9; }
+[data-theme="dark"] .sidebar { background: #121924; border-right-color: #1c2636; }
+[data-theme="dark"] .brand-lockup { color: #f0f4f9; }
+[data-theme="dark"] .sidebar-workspace { background: #161f2c; border-color: #212c3d; color: #f0f4f9; }
+[data-theme="dark"] .workspace-icon { background: #1e2942; color: #728cf5; }
+[data-theme="dark"] .chevron { color: #6d7b8f; }
+[data-theme="dark"] .security-note { background: #101c15; border-color: #1a3224; }
+[data-theme="dark"] .security-note strong { color: #5ed69e; }
+[data-theme="dark"] .security-note small { color: #8ba99b; }
+[data-theme="dark"] .security-note.vulnerable { background: #261415; border-color: #4a2123; }
+[data-theme="dark"] .security-note.vulnerable strong { color: #f89389; }
+[data-theme="dark"] .security-note.vulnerable small { color: #ba8c89; }
+[data-theme="dark"] .profile-row { border-top-color: #1c2636; }
+[data-theme="dark"] .profile-row .avatar { background: #1e2942; color: #9bb1f9; }
+[data-theme="dark"] .profile-details strong { color: #f0f4f9; }
+[data-theme="dark"] .logout-button { color: #778598; }
+[data-theme="dark"] .logout-button:hover { color: #f28b81; }
+
+[data-theme="dark"] .chat-workspace { background: #0e141d; color: #f0f4f9; }
+[data-theme="dark"] .topbar { background: #0e141d; border-bottom-color: #1c2636; }
+[data-theme="dark"] .breadcrumbs { color: #8896a7; }
+[data-theme="dark"] .breadcrumbs strong { color: #f0f4f9; }
+[data-theme="dark"] .topbar-status { color: #8896a7; }
+[data-theme="dark"] .role-pill { background: #1e2942; color: #9bb1f9; }
+[data-theme="dark"] .theme-toggle-btn:hover { background: rgba(255, 255, 255, 0.08); }
+
+[data-theme="dark"] .welcome-block h1 { color: #f3f6fa; }
+[data-theme="dark"] .welcome-block>p:last-child { color: #9eaab8; }
+[data-theme="dark"] .welcome-icon { color: #6c89fa; }
+
+[data-theme="dark"] .suggestions button { background: #151e2b; border-color: #212c3e; color: #dce4ef; }
+[data-theme="dark"] .suggestions button:hover { background: #1b2637; border-color: #3d5280; color: #ffffff; }
+[data-theme="dark"] .suggestion-arrow { color: #728298; }
+
+[data-theme="dark"] .bubble.assistant { background: #182230; color: #e8eff8; }
+[data-theme="dark"] .message-author { color: #758498; }
+[data-theme="dark"] .message-avatar.assistant { background: #1d283f; color: #7591fb; }
+[data-theme="dark"] .message-avatar.user { background: #253144; color: #cbd5e1; }
+
+[data-theme="dark"] .consent-card,
+[data-theme="dark"] .action-card { background: #141d2a; border-color: #222f42; color: #e8eff8; }
+[data-theme="dark"] .action-card-header strong { color: #f0f4f9; }
+[data-theme="dark"] .action-card-header small { color: #8896a7; }
+[data-theme="dark"] .pending-badge { background: #1e2a44; color: #8ca2fa; }
+[data-theme="dark"] .completed .pending-badge { background: #12291e; color: #45d697; }
+[data-theme="dark"] .action-fields label { color: #8896a7; }
+[data-theme="dark"] .action-fields input,
+[data-theme="dark"] .action-fields textarea { background: #0d131c; border-color: #243144; color: #f0f4f9; }
+[data-theme="dark"] .action-fields input:focus,
+[data-theme="dark"] .action-fields textarea:focus { border-color: #4366e6; outline: none; }
+[data-theme="dark"] .small-secondary { background: #1c2637; border-color: #27364e; color: #cbd5e1; }
+[data-theme="dark"] .small-secondary:hover:not(:disabled) { background: #233045; color: #ffffff; }
+[data-theme="dark"] .source-chip { background: #182231; border-color: #243042; color: #b4c3d8; }
+
+[data-theme="dark"] .composer { background: #141d2a; border-color: #233044; box-shadow: 0 7px 22px rgba(0, 0, 0, 0.4); }
+[data-theme="dark"] .composer:focus-within { border-color: #4366e6; }
+[data-theme="dark"] .composer textarea { color: #f0f4f9; }
+[data-theme="dark"] .composer textarea::placeholder { color: #627185; }
+[data-theme="dark"] .composer-hint { color: #758498; }
+[data-theme="dark"] .composer-caption { color: #6c7b8e; }
+
+[data-theme="dark"] .login-screen { background: radial-gradient(ellipse at 50% 35%, #182234 0%, #0f1520 60%, #0a0e16 100%); }
+[data-theme="dark"] .login-screen .theme-toggle-btn { background: #131a24; border-color: #1f2937; color: #cbd5e1; }
+[data-theme="dark"] .login-card { background: #131a24; border-color: #1f2937; box-shadow: 0 22px 70px rgba(0, 0, 0, 0.5); }
+[data-theme="dark"] .login-card h1 { color: #f3f6fa; }
+[data-theme="dark"] .login-copy { color: #9eaab8; }
+[data-theme="dark"] .orbit { border-color: #26334d; }
+[data-theme="dark"] .orbit-two { border-color: #1e283c; }
+[data-theme="dark"] .headset { background: #1c263c; color: #728cf5; box-shadow: 0 8px 24px rgba(45, 68, 175, 0.25); }
+[data-theme="dark"] .privacy-note { color: #6d7b8f; }
+[data-theme="dark"] .login-footer { color: #627083; }
+[data-theme="dark"] .loading-screen { background: #0e141d; color: #8896a7; }
+
+/* System preferences media query (when data-theme is not explicitly set to light) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ink: #f0f4f9;
+    --muted: #8896a7;
+    --line: #1c2636;
+    --pale: #141d2a;
+    color: #f0f4f9;
+    background: #0b1017;
+  }
+
+  :root:not([data-theme="light"]) .app-shell { background: #0e141d; color: #f0f4f9; }
+  :root:not([data-theme="light"]) .sidebar { background: #121924; border-right-color: #1c2636; }
+  :root:not([data-theme="light"]) .brand-lockup { color: #f0f4f9; }
+  :root:not([data-theme="light"]) .sidebar-workspace { background: #161f2c; border-color: #212c3d; color: #f0f4f9; }
+  :root:not([data-theme="light"]) .workspace-icon { background: #1e2942; color: #728cf5; }
+  :root:not([data-theme="light"]) .chevron { color: #6d7b8f; }
+  :root:not([data-theme="light"]) .security-note { background: #101c15; border-color: #1a3224; }
+  :root:not([data-theme="light"]) .security-note strong { color: #5ed69e; }
+  :root:not([data-theme="light"]) .security-note small { color: #8ba99b; }
+  :root:not([data-theme="light"]) .security-note.vulnerable { background: #261415; border-color: #4a2123; }
+  :root:not([data-theme="light"]) .security-note.vulnerable strong { color: #f89389; }
+  :root:not([data-theme="light"]) .security-note.vulnerable small { color: #ba8c89; }
+  :root:not([data-theme="light"]) .profile-row { border-top-color: #1c2636; }
+  :root:not([data-theme="light"]) .profile-row .avatar { background: #1e2942; color: #9bb1f9; }
+  :root:not([data-theme="light"]) .profile-details strong { color: #f0f4f9; }
+  :root:not([data-theme="light"]) .logout-button { color: #778598; }
+  :root:not([data-theme="light"]) .logout-button:hover { color: #f28b81; }
+
+  :root:not([data-theme="light"]) .chat-workspace { background: #0e141d; color: #f0f4f9; }
+  :root:not([data-theme="light"]) .topbar { background: #0e141d; border-bottom-color: #1c2636; }
+  :root:not([data-theme="light"]) .breadcrumbs { color: #8896a7; }
+  :root:not([data-theme="light"]) .breadcrumbs strong { color: #f0f4f9; }
+  :root:not([data-theme="light"]) .topbar-status { color: #8896a7; }
+  :root:not([data-theme="light"]) .role-pill { background: #1e2942; color: #9bb1f9; }
+  :root:not([data-theme="light"]) .theme-toggle-btn:hover { background: rgba(255, 255, 255, 0.08); }
+
+  :root:not([data-theme="light"]) .welcome-block h1 { color: #f3f6fa; }
+  :root:not([data-theme="light"]) .welcome-block>p:last-child { color: #9eaab8; }
+  :root:not([data-theme="light"]) .welcome-icon { color: #6c89fa; }
+
+  :root:not([data-theme="light"]) .suggestions button { background: #151e2b; border-color: #212c3e; color: #dce4ef; }
+  :root:not([data-theme="light"]) .suggestions button:hover { background: #1b2637; border-color: #3d5280; color: #ffffff; }
+  :root:not([data-theme="light"]) .suggestion-arrow { color: #728298; }
+
+  :root:not([data-theme="light"]) .bubble.assistant { background: #182230; color: #e8eff8; }
+  :root:not([data-theme="light"]) .message-author { color: #758498; }
+  :root:not([data-theme="light"]) .message-avatar.assistant { background: #1d283f; color: #7591fb; }
+  :root:not([data-theme="light"]) .message-avatar.user { background: #253144; color: #cbd5e1; }
+
+  :root:not([data-theme="light"]) .consent-card,
+  :root:not([data-theme="light"]) .action-card { background: #141d2a; border-color: #222f42; color: #e8eff8; }
+  :root:not([data-theme="light"]) .action-card-header strong { color: #f0f4f9; }
+  :root:not([data-theme="light"]) .action-card-header small { color: #8896a7; }
+  :root:not([data-theme="light"]) .pending-badge { background: #1e2a44; color: #8ca2fa; }
+  :root:not([data-theme="light"]) .completed .pending-badge { background: #12291e; color: #45d697; }
+  :root:not([data-theme="light"]) .action-fields label { color: #8896a7; }
+  :root:not([data-theme="light"]) .action-fields input,
+  :root:not([data-theme="light"]) .action-fields textarea { background: #0d131c; border-color: #243144; color: #f0f4f9; }
+  :root:not([data-theme="light"]) .action-fields input:focus,
+  :root:not([data-theme="light"]) .action-fields textarea:focus { border-color: #4366e6; outline: none; }
+  :root:not([data-theme="light"]) .small-secondary { background: #1c2637; border-color: #27364e; color: #cbd5e1; }
+  :root:not([data-theme="light"]) .small-secondary:hover:not(:disabled) { background: #233045; color: #ffffff; }
+  :root:not([data-theme="light"]) .source-chip { background: #182231; border-color: #243042; color: #b4c3d8; }
+
+  :root:not([data-theme="light"]) .composer { background: #141d2a; border-color: #233044; box-shadow: 0 7px 22px rgba(0, 0, 0, 0.4); }
+  :root:not([data-theme="light"]) .composer:focus-within { border-color: #4366e6; }
+  :root:not([data-theme="light"]) .composer textarea { color: #f0f4f9; }
+  :root:not([data-theme="light"]) .composer textarea::placeholder { color: #627185; }
+  :root:not([data-theme="light"]) .composer-hint { color: #758498; }
+  :root:not([data-theme="light"]) .composer-caption { color: #6c7b8e; }
+
+  :root:not([data-theme="light"]) .login-screen { background: radial-gradient(ellipse at 50% 35%, #182234 0%, #0f1520 60%, #0a0e16 100%); }
+  :root:not([data-theme="light"]) .login-screen .theme-toggle-btn { background: #131a24; border-color: #1f2937; color: #cbd5e1; }
+  :root:not([data-theme="light"]) .login-card { background: #131a24; border-color: #1f2937; box-shadow: 0 22px 70px rgba(0, 0, 0, 0.5); }
+  :root:not([data-theme="light"]) .login-card h1 { color: #f3f6fa; }
+  :root:not([data-theme="light"]) .login-copy { color: #9eaab8; }
+  :root:not([data-theme="light"]) .orbit { border-color: #26334d; }
+  :root:not([data-theme="light"]) .orbit-two { border-color: #1e283c; }
+  :root:not([data-theme="light"]) .headset { background: #1c263c; color: #728cf5; box-shadow: 0 8px 24px rgba(45, 68, 175, 0.25); }
+  :root:not([data-theme="light"]) .privacy-note { color: #6d7b8f; }
+  :root:not([data-theme="light"]) .login-footer { color: #627083; }
+  :root:not([data-theme="light"]) .loading-screen { background: #0e141d; color: #8896a7; }
+}

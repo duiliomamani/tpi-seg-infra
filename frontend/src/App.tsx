@@ -56,8 +56,22 @@ export default function App() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    const saved = localStorage.getItem("soporte_theme");
+    if (saved === "dark" || saved === "light") return saved;
+    return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
   const endOfMessages = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("soporte_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
+  };
 
   const loadProfile = async () => {
     setLoadingProfile(true);
@@ -218,6 +232,15 @@ export default function App() {
   if (!profile) {
     return (
       <main className="login-screen">
+        <button
+          type="button"
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+          aria-label="Cambiar tema"
+        >
+          {theme === "dark" ? "☀️" : "🌙"}
+        </button>
         <section className="login-card">
           <div className="brand-lockup"><span className="brand-mark">S</span><span>soporte<span className="brand-dot">.</span></span></div>
           <div className="login-illustration" aria-hidden="true"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><span className="headset">◖</span><span className="spark spark-a">✦</span><span className="spark spark-b">✳</span></div>
@@ -252,7 +275,28 @@ export default function App() {
       </aside>
 
       <main className="chat-workspace">
-        <header className="topbar"><div className="breadcrumbs"><span>Soporte</span><span className="crumb-divider">/</span><strong>Conversación</strong></div><div className="topbar-status"><span className={`status-dot ${vulnerableGroupsDemo ? "vulnerable" : ""}`} /> {vulnerableGroupsDemo ? "Demo vulnerable" : "Modo protegido"} <span className="topbar-divider" /> <span className="role-pill">{roleLabel}</span></div></header>
+        <header className="topbar">
+          <div className="breadcrumbs">
+            <span>Soporte</span>
+            <span className="crumb-divider">/</span>
+            <strong>Conversación</strong>
+          </div>
+          <div className="topbar-status">
+            <span className={`status-dot ${vulnerableGroupsDemo ? "vulnerable" : ""}`} /> {vulnerableGroupsDemo ? "Demo vulnerable" : "Modo protegido"}
+            <span className="topbar-divider" />
+            <span className="role-pill">{roleLabel}</span>
+            <span className="topbar-divider" />
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+              aria-label="Cambiar tema"
+            >
+              {theme === "dark" ? "☀️" : "🌙"}
+            </button>
+          </div>
+        </header>
         <section className={`conversation ${hasConversation ? "has-conversation" : ""}`}>
           {!hasConversation && <div className="welcome-block"><span className="welcome-icon">✳</span><p className="eyebrow">ASISTENTE DE SOPORTE</p><h1>Hola, {profile.name.split(" ")[0]} <span>👋</span></h1><p>Contame qué te pasa. Te ayudo a encontrar una solución o a preparar un ticket.</p></div>}
           <div className="messages" aria-live="polite">
