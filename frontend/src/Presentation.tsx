@@ -122,13 +122,13 @@ const slides = [
     content: () => (
       <div className="flex flex-col h-full justify-center px-12 relative z-10 max-w-7xl mx-auto">
         <h2 className="text-4xl font-bold text-white mb-10 flex items-center gap-4">
-          <span className="text-orange-400">02.</span> La Amenaza (OWASP Top 10 - 2025)
+          <span className="text-orange-400">02.</span> Riesgos seleccionados · OWASP LLM Top 10 2026
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <GlassCard className="p-6 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-red-500">
             <FileCode2 size={40} className="text-red-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM01: Inyección</h3>
+            <h3 className="text-xl font-bold text-white mb-2">LLM01: Prompt Injection</h3>
             <p className="text-slate-300 text-sm">
               Instrucciones maliciosas ocultan comandos en prompts o documentos para desviar el comportamiento del agente.
             </p>
@@ -136,7 +136,7 @@ const slides = [
 
           <GlassCard className="p-6 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-yellow-500">
             <UserX size={40} className="text-yellow-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM02: Fuga de Datos</h3>
+            <h3 className="text-xl font-bold text-white mb-2">LLM02: Sensitive Information Disclosure</h3>
             <p className="text-slate-300 text-sm">
               El modelo expone o divulga información sensible o confidencial a usuarios que no tienen los privilegios adecuados.
             </p>
@@ -144,23 +144,23 @@ const slides = [
 
           <GlassCard className="p-6 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-purple-500">
             <Database size={40} className="text-purple-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM04: Envenenamiento</h3>
+            <h3 className="text-xl font-bold text-white mb-2">LLM03: Excessive Agency</h3>
             <p className="text-slate-300 text-sm">
-              Manipulación de los datos de entrenamiento, ajuste fino o bases vectoriales (RAG) para alterar respuestas.
+              El agente dispone de permisos o autonomía que pueden llevarlo a ejecutar acciones fuera del propósito autorizado.
             </p>
           </GlassCard>
 
           <GlassCard className="p-6 md:col-span-1 md:col-start-1 md:ml-12 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-cyan-500">
             <Workflow size={40} className="text-cyan-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM06: Agencia Excesiva</h3>
+            <h3 className="text-xl font-bold text-white mb-2">LLM05: Data and Model Poisoning</h3>
             <p className="text-slate-300 text-sm">
-              El agente cuenta con autonomía, permisos o acceso a herramientas desproporcionados para su función real.
+              Datos o modelos alterados pueden cambiar respuestas y decisiones del sistema.
             </p>
           </GlassCard>
 
           <GlassCard className="p-6 md:col-span-2 md:mr-12 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-indigo-500">
             <Network size={40} className="text-indigo-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM08: Vectores y Embeddings</h3>
+            <h3 className="text-xl font-bold text-white mb-2">LLM09: Vector and Embedding Weaknesses</h3>
             <p className="text-slate-300 text-sm">
               Fallos en el control de acceso de bases vectoriales, devolviendo fragmentos de texto reservados en búsquedas semánticas.
             </p>

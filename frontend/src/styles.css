@@ -244,6 +244,12 @@
 .mission-play { width: 17px; color: #95a0b0; font-size: 12px; text-align: center; }
 .mission-button.played .mission-code { background: #e8f6ef; color: #27865f; }
 .mission-button.played .mission-play { color: #27865f; font-weight: 800; }
+.sidebar-lab-btn { width:100%; display:flex; align-items:center; gap:8px; margin:0 0 9px; padding:9px 10px; border:1px solid #dbe6e0; border-radius:8px; background:linear-gradient(110deg,#f4fbf7,#eff8f3); color:#315848; text-align:left; font-size:10px; font-weight:700; }
+.sidebar-lab-btn>span:first-child { color:#1f9b70; font-size:15px; }
+.sidebar-lab-btn .arrow-chip { margin-left:auto; color:#7a9286; }
+.sidebar-lab-btn:hover { border-color:#78cda9; background:#effaf4; }
+.topbar-lab-btn { display:inline-flex; align-items:center; gap:5px; padding:5px 8px; border:1px solid #dbe7df; border-radius:6px; background:#f3faf6; color:#34765a; font-size:9px; font-weight:800; white-space:nowrap; }
+.topbar-lab-btn:hover { border-color:#70c7a0; background:#eaf8f0; }
 .mission-hud { width: min(610px,100%); display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 21px auto 0; padding: 11px 13px; border: 1px solid #e8ebf1; border-radius: 10px; background: #ffffff; box-shadow: 0 6px 18px rgba(24,39,68,.04); }
 .mission-hud>div { display: grid; gap: 4px; }
 .mission-hud strong { color: #49556a; font-size: 10px; }
@@ -303,6 +309,10 @@
 :root[data-theme="dark"] .app-shell[data-demo-mode="vulnerable"] .bubble.user { background: #382022; color: #f8e6e5; }
 :root[data-theme="dark"] .app-shell[data-demo-mode="vulnerable"] .threat-signal { background: linear-gradient(105deg,#32191a,#281819); border-color: #87403c; color: #ffaaa5; }
 :root[data-theme="dark"] .app-shell[data-demo-mode="vulnerable"] .threat-signal.group_disclosure { background: linear-gradient(105deg,#302515,#241e17); border-color: #765b2f; color: #f3ca82; }
+:root[data-theme="dark"] .sidebar-lab-btn { border-color:#254234; background:#13231a; color:#9ce4bf; }
+:root[data-theme="dark"] .sidebar-lab-btn:hover { border-color:#367555; background:#162b20; }
+:root[data-theme="dark"] .topbar-lab-btn { border-color:#294333; background:#14231b; color:#9ce4bf; }
+:root[data-theme="dark"] .topbar-lab-btn:hover { border-color:#427a59; background:#193023; }
 
 @media(max-width:900px) { .demo-mode-toggle button { padding: 5px; font-size: 7px; } .mission-board { padding-left: 8px; padding-right: 8px; } }
 @media(max-width:640px) { .mission-board { display: none; } .topbar { padding: 0 9px; } .topbar-status { gap: 4px; } .demo-mode-toggle button { padding: 4px; font-size: 6px; } .role-pill { display: none; } .mission-hud { margin-top: 16px; padding: 9px; } .mission-hud strong { font-size: 8px; } .mission-hud>span { font-size: 8px; } }
@@ -415,6 +425,9 @@ body:has(.app-shell) { overflow: hidden; }
   .breadcrumbs span { display: none; }
   .topbar-status { min-width: 0; flex: 1; justify-content: flex-end; gap: 4px; font-size: 8px; }
   .topbar-divider,.topbar-presentation-btn,.topbar-status .role-pill { display: none; }
+  .topbar-lab-btn { padding:4px 6px; font-size:7px; }
+  .topbar-lab-btn span { display:none; }
+  .sidebar-lab-btn { display:none; }
   .demo-mode-toggle { flex: 0 0 auto; }
   .demo-mode-toggle button { padding: 4px 5px; font-size: 7px; }
   .theme-toggle-btn { padding: 4px; }
