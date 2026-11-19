@@ -19,7 +19,7 @@ from backend import settings
 
 logger = logging.getLogger("support.audit")
 OPA_URL = os.getenv("OPA_URL", "http://opa:8181").rstrip("/")
-MCP_RESOURCE_URL = os.getenv("MCP_RESOURCE_URL", "http://localhost:8002/mcp")
+MCP_RESOURCE_URL = os.getenv("MCP_RESOURCE_URL", "http://localhost:5102/mcp")
 _jwks = jwt.PyJWKClient(f"{settings.OIDC_INTERNAL_REALM}/protocol/openid-connect/certs")
 
 
@@ -186,6 +186,44 @@ def verify_mfa_reset_approval_proof(
         or not isinstance(payload.get("action_id"), str)
         or not payload.get("action_id")
         or not isinstance(expiry, int)
+        or expiry < time.time()
+        or expiry > time.time() + 300
+    ):
+        return None
+    return payload
+
+
+def verify_product_price_approval_proof(
+    proof: str,
+    *,
+    subject: str,
+    sku: str,
+    new_price_ars: int,
+) -> dict[str, Any] | None:
+    try:
+        encoded, signature_text = proof.split(".", 1)
+        expected = hmac.new(
+            settings.ACTION_SIGNING_SECRET.encode("utf-8"), encoded.encode("ascii"), hashlib.sha256
+        ).digest()
+        supplied = base64.urlsafe_b64decode(signature_text + "=" * (-len(signature_text) % 4))
+        if not hmac.compare_digest(expected, supplied):
+            return None
+        raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
+        payload = json.loads(raw)
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+    expiry = payload.get("exp")
+    if (
+        payload.get("sub") != subject
+        or payload.get("action") != "product_price:update"
+        or payload.get("sku") != sku
+        or type(payload.get("new_price_ars")) is not int
+        or payload.get("new_price_ars") != new_price_ars
+        or not isinstance(payload.get("session"), str)
+        or not payload.get("session")
+        or not isinstance(payload.get("action_id"), str)
+        or not payload.get("action_id")
+        or type(expiry) is not int
         or expiry < time.time()
         or expiry > time.time() + 300
     ):

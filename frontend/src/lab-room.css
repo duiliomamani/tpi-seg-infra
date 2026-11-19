@@ -251,3 +251,128 @@
   .lab-current-mode.vulnerable i,.lab-route.current,.station-halo,.room-scene-status.danger .room-status-pulse { animation:none !important; }
   .lab-progress span,.room-station .station-disc { transition:none !important; }
 }
+
+/* Projector typography: preserve detail without relying on tiny labels. */
+.lab-room-header { min-height:72px; flex-basis:72px; padding-inline:24px; }
+.lab-mission-panel { width:clamp(380px,26vw,440px); min-width:clamp(380px,26vw,440px); }
+.lab-panel-scroll { padding:20px 20px 14px; }
+.lab-room-brand strong { font-size:17px; }
+.lab-room-brand small,.lab-mode-hint,.lab-user-chip small,.lab-eyebrow,.lab-campaign-heading small { font-size:12px; }
+.lab-current-mode,.lab-mode-switch button,.lab-exit-button { font-size:13px; }
+.lab-user-chip { min-height:66px; flex-basis:66px; }
+.lab-user-chip strong,.lab-steps-heading strong,.lab-mission-picker button strong,.lab-step-list button strong { font-size:14px; }
+.lab-campaign-heading strong,.lab-mission-picker button small,.lab-step-list button small,.lab-steps-heading span { font-size:12px; }
+.lab-campaign-heading>span,.lab-mission-picker button>span,.lab-step-list button>span { font-size:12px; }
+.lab-mission-picker { grid-template-columns:1fr; gap:7px; }
+.lab-mission-picker button { min-height:40px; gap:9px; padding:7px 9px; }
+.lab-mission-picker button>span { width:27px; height:27px; flex-basis:27px; }
+.lab-mission-picker button strong,.lab-mission-picker button small { white-space:normal; line-height:1.35; }
+.lab-mission-title { margin:16px 0 14px; padding:14px; }
+.lab-mission-title>span,.lab-step-explanation>small,.lab-incident-note small { font-size:12px; }
+.lab-mission-title h1 { font-size:21px; line-height:1.25; }
+.lab-mission-title p,.lab-step-explanation p,.lab-control-note span,.lab-incident-note span,.lab-mfa-preflight span { font-size:14px; line-height:1.55; }
+.lab-step-list { gap:5px; max-height:270px; }
+.lab-step-list button { min-height:42px; gap:10px; padding:7px 9px; }
+.lab-step-list button:before { top:31px; left:19px; height:16px; }
+.lab-step-explanation>strong,.lab-control-note strong,.lab-incident-note strong,.lab-mfa-preflight strong { font-size:14px; }
+.lab-recovery-check,.lab-action-button,.lab-local-link,.lab-step-navigation button,.lab-run-chat { font-size:13px; }
+.lab-control-note,.lab-incident-note,.lab-mfa-preflight { padding:12px; }
+.lab-incident-note small,.lab-mfa-preflight a,.lab-panel-footer>small { font-size:12px; }
+.lab-panel-footer { padding:13px 18px 15px; }
+.lab-step-navigation button { padding:9px 11px; }
+.lab-run-chat { padding:12px; }
+.lab-world-toolbar { min-height:68px; flex-basis:68px; padding-inline:24px; }
+.lab-world-live,.lab-world-legend { font-size:12px; }
+.lab-world-toolbar strong { font-size:16px; }
+.lab-world-toolbar small { font-size:13px; }
+.station-tag,.evidence-tag { font-size:13px; }
+.station-label,.evidence-line,.evidence-code { font-size:15px; }
+.room-scene-status strong,.room-evidence-caption small { font-size:12px; }
+.room-scene-status small,.room-evidence-caption span,.room-zone-inspector small,.lab-world-footer span,.lab-world-footer strong { font-size:13px; }
+.room-evidence-caption strong,.room-zone-inspector strong { font-size:15px; }
+.room-zone-inspector>span { font-size:12px; }
+.room-scene-status,.room-evidence-caption,.room-zone-inspector { padding:13px 15px; }
+.lab-world-footer { min-height:60px; flex-basis:60px; padding:9px 24px; }
+@media(max-width:1050px) and (min-width:721px) {
+  .lab-mission-panel { width:350px; min-width:350px; }
+  .lab-panel-scroll { padding:16px 15px 12px; }
+}
+@media(max-width:720px) {
+  .lab-room-header { min-height:64px; flex-basis:64px; padding-inline:12px; }
+  .lab-room-brand strong { font-size:14px; }
+  .lab-room-brand small { font-size:11px; }
+  .lab-current-mode,.lab-mode-switch button,.lab-exit-button { font-size:11px; }
+  .lab-mission-panel { width:100%; min-width:0; height:52%; min-height:290px; flex:0 1 52%; }
+  .lab-user-chip { min-height:48px; flex-basis:48px; }
+  .lab-user-chip strong,.lab-campaign-heading strong,.lab-mission-picker button strong,.lab-step-list button strong { font-size:13px; }
+  .lab-user-chip small,.lab-campaign-heading small,.lab-campaign-heading>span,.lab-mission-picker button small,.lab-step-list button small { font-size:11px; }
+  .lab-panel-scroll { padding:12px; }
+  .lab-eyebrow,.lab-mission-title>span,.lab-steps-heading strong,.lab-steps-heading span { font-size:11px; }
+  .lab-mission-picker { grid-template-columns:1fr; gap:5px; }
+  .lab-mission-picker button { min-height:36px; }
+  .lab-mission-picker button>span { width:23px; height:23px; flex-basis:23px; font-size:11px; }
+  .lab-mission-title { margin:9px 0; padding:10px; }
+  .lab-mission-title h1 { font-size:18px; }
+  .lab-mission-title p,.lab-step-explanation p,.lab-control-note span,.lab-incident-note span,.lab-mfa-preflight span { font-size:12px; }
+  .lab-step-list { max-height:130px; }
+  .lab-step-list button { min-height:36px; }
+  .lab-step-list button>span,.lab-step-explanation>small,.lab-control-note strong,.lab-incident-note small { font-size:11px; }
+  .lab-step-explanation>strong,.lab-incident-note strong,.lab-mfa-preflight strong { font-size:13px; }
+  .lab-action-button,.lab-local-link,.lab-step-navigation button,.lab-run-chat { font-size:12px; }
+  .lab-panel-footer>small,.lab-mfa-preflight a { font-size:11px; }
+  .lab-world-toolbar { min-height:56px; flex-basis:56px; padding-inline:12px; }
+  .lab-world-toolbar strong { font-size:13px; }
+  .lab-world-toolbar small,.lab-world-live,.lab-world-legend { font-size:10px; }
+  .room-scene-status { left:8px; bottom:8px; max-width:46%; padding:8px; }
+  .room-scene-status strong,.room-evidence-caption small { font-size:10px; }
+  .room-scene-status small,.room-evidence-caption span { font-size:11px; }
+  .room-evidence-caption { top:8px; right:8px; width:44%; padding:8px; }
+  .room-evidence-caption strong,.room-zone-inspector strong { font-size:12px; }
+  .room-zone-inspector { right:8px; bottom:8px; width:47%; gap:6px; padding:8px; }
+  .room-zone-inspector>span { width:24px; height:24px; flex-basis:24px; font-size:10px; }
+  .room-zone-inspector small { font-size:10px; }
+  .lab-world-footer { min-height:44px; flex-basis:44px; gap:5px; padding:5px 8px; }
+  .lab-world-footer span,.lab-world-footer strong { font-size:9px; }
+}
+
+/* Visual finish for the interactive room. */
+.lab-room-header {
+  border-bottom-color:#24372e;
+  background:linear-gradient(100deg,#0d1712,#0a130f 55%,#0c1712);
+  box-shadow:0 8px 24px #0002;
+}
+.lab-room-layout { background:#08100d; }
+.lab-mission-panel {
+  background:linear-gradient(180deg,#101c16,#0b130f 78%);
+  border-right-color:#273a30;
+  box-shadow:8px 0 26px #0002;
+}
+.lab-user-chip { background:#0d1712; border-bottom-color:#273a30; }
+.lab-panel-scroll { scrollbar-color:#3b5748 transparent; }
+.lab-mission-picker button {
+  border-color:#26372e;
+  background:linear-gradient(115deg,#111d16,#0e1812);
+  transition:transform .16s ease,border-color .16s ease,background .16s ease;
+}
+.lab-mission-picker button:hover { transform:translateX(2px); border-color:#4d856b; }
+.lab-mission-picker button.selected { box-shadow:inset 3px 0 #35d69d,0 5px 15px #0002; }
+.lab-room-shell[data-demo-mode="vulnerable"] .lab-mission-picker button.selected { box-shadow:inset 3px 0 #ff625d,0 5px 15px #0002; }
+.lab-mission-title { box-shadow:0 8px 24px #0002; }
+.lab-step-list button { min-height:44px; border-radius:9px; transition:background .15s ease,border-color .15s ease; }
+.lab-step-list button:hover { border-color:#375343; background:#122019; }
+.lab-step-list button.active { box-shadow:inset 3px 0 #37d69b; }
+.lab-room-shell[data-demo-mode="vulnerable"] .lab-step-list button.active { box-shadow:inset 3px 0 #ff625d; }
+.lab-step-explanation,.lab-control-note,.lab-incident-note,.lab-mfa-preflight { border-radius:10px; box-shadow:0 5px 18px #0002; }
+.lab-action-button,.lab-local-link,.lab-step-navigation button,.lab-run-chat { min-height:40px; border-radius:9px; transition:transform .15s ease,filter .15s ease,border-color .15s ease; }
+.lab-action-button:hover:not(:disabled),.lab-local-link:hover,.lab-step-navigation button:hover:not(:disabled),.lab-run-chat:hover:not(:disabled) { transform:translateY(-1px); filter:brightness(1.1); }
+.lab-world { background:radial-gradient(ellipse at 50% 42%,#192b21 0,#0a120e 68%); }
+.lab-world-toolbar { border-bottom-color:#26382e; background:#0a130fee; }
+.lab-world-footer { border-top-color:#26382e; background:#0a130f; }
+.room-scene-status,.room-evidence-caption,.room-zone-inspector { border-radius:12px; box-shadow:0 12px 32px #0007; }
+.room-scene-status { backdrop-filter:blur(12px); }
+.room-evidence-caption,.room-zone-inspector { backdrop-filter:blur(14px); }
+.lab-room-shell button:focus-visible { outline:3px solid #8ce7be; outline-offset:3px; }
+.lab-room-shell[data-demo-mode="vulnerable"] button:focus-visible { outline-color:#ffaaa4; }
+@media(prefers-reduced-motion:reduce) {
+  .lab-mission-picker button,.lab-step-list button,.lab-action-button,.lab-local-link,.lab-step-navigation button,.lab-run-chat { transition:none; }
+}

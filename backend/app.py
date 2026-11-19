@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -8,11 +9,12 @@ from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend import settings
+from backend.audit import record_event
 from backend.agent import respond
 from backend.auth import (
     SESSIONS,
@@ -24,10 +26,11 @@ from backend.auth import (
     get_mcp_access_token,
     make_approval_proof,
     make_mfa_reset_approval_proof,
+    make_product_price_approval_proof,
     require_csrf,
 )
 from backend.mcp_client import MCPToolFailure, call_support_tool
-from backend.store import get_demo_modes, initialize, set_demo_modes
+from backend.store import PRODUCT_SKUS, get_demo_modes, initialize, set_demo_modes
 
 
 initialize()
@@ -157,6 +160,14 @@ async def set_tool_consent(request: Request, body: ToolConsentInput) -> dict[str
         session.consented_tools.add(body.tool)
     else:
         session.consented_tools.discard(body.tool)
+    record_event(
+        session,
+        category="tool",
+        title=f"Consentimiento {'otorgado' if body.allowed else 'rechazado'} · {body.tool}",
+        status="authorized" if body.allowed else "denied",
+        detail="La herramienta podrá ejecutarse durante esta sesión." if body.allowed else "La herramienta no se ejecutará sin consentimiento.",
+        payload={"tool": body.tool},
+    )
     return {"consented_tools": sorted(session.consented_tools)}
 
 
@@ -168,8 +179,55 @@ async def chat(request: Request, body: ChatInput) -> dict[str, object]:
     for action_id, pending in list(session.pending_actions.items()):
         if pending["expires_at"] < time.time():
             session.pending_actions.pop(action_id, None)
-    token = await get_mcp_access_token(session)
-    return await respond(body.message.strip(), session_id, session, token)
+    message = body.message.strip()
+    try:
+        token = await get_mcp_access_token(session)
+        result = await respond(message, session_id, session, token)
+    except Exception:
+        record_event(
+            session,
+            category="system",
+            title="Falló el procesamiento de la consulta",
+            status="error",
+            detail="El BFF no pudo completar la consulta. El detalle interno no se expone en el registro.",
+        )
+        raise
+    record_event(
+        session,
+        category="system",
+        title="Consulta procesada por el BFF",
+        status="awaiting_consent" if result.get("kind") == "tool_consent" else "completed",
+        detail="El agente terminó de preparar la respuesta. Las llamadas a herramientas aparecen como eventos separados.",
+        payload={"result_kind": result.get("kind"), "model_status": result.get("model_status")},
+    )
+    return result
+
+
+@app.get("/api/logs/stream")
+async def stream_session_logs(request: Request) -> StreamingResponse:
+    session_id, session = current_session(request)
+    queue: asyncio.Queue[dict[str, object]] = asyncio.Queue(maxsize=100)
+    session.audit_subscribers.add(queue)
+
+    async def events():
+        try:
+            snapshot = list(session.audit_events)
+            yield f"event: snapshot\ndata: {json.dumps(snapshot, ensure_ascii=False, separators=(',', ':'))}\n\n"
+            while SESSIONS.get(session_id) is session and not await request.is_disconnected():
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15)
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
+                    continue
+                yield f"event: log\ndata: {json.dumps(event, ensure_ascii=False, separators=(',', ':'))}\n\n"
+        finally:
+            session.audit_subscribers.discard(queue)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/actions/{action_id}/confirm")
@@ -199,6 +257,7 @@ async def confirm_action(request: Request, action_id: str, body: ConfirmActionIn
                 "description": body.description.strip(),
                 "approval_proof": proof,
             },
+            audit_session=session,
         )
     except MCPToolFailure as exc:
         if exc.kind == "forbidden":
@@ -241,6 +300,7 @@ async def confirm_mfa_reset(request: Request, action_id: str) -> dict[str, objec
             token,
             "reset_user_mfa",
             {"username": username, "approval_proof": proof},
+            audit_session=session,
         )
     except MCPToolFailure as exc:
         if exc.kind == "forbidden":
@@ -267,11 +327,74 @@ async def confirm_mfa_reset(request: Request, action_id: str) -> dict[str, objec
     }
 
 
+@app.post("/api/actions/{action_id}/confirm-product-price")
+async def confirm_product_price(request: Request, action_id: str) -> dict[str, object]:
+    session_id, session = current_session(request)
+    require_csrf(request, session)
+    pending = session.pending_actions.get(action_id)
+    if not pending or pending.get("kind") != "product_price" or pending["expires_at"] < time.time():
+        session.pending_actions.pop(action_id, None)
+        raise HTTPException(status_code=409, detail="La solicitud de cambio de precio venció. Volvé a iniciarla.")
+    if get_demo_modes()["product_data_demo_mode"] != "secure":
+        session.pending_actions.pop(action_id, None)
+        raise HTTPException(status_code=409, detail="El modo del laboratorio cambió; revisá la solicitud antes de continuar.")
+    if "support_admin" not in session.roles:
+        session.pending_actions.pop(action_id, None)
+        raise HTTPException(status_code=403, detail="Sólo soporte administrador puede confirmar cambios de precio.")
+    sku = str(pending.get("sku", ""))
+    new_price_ars = pending.get("new_price_ars")
+    if sku not in PRODUCT_SKUS or type(new_price_ars) is not int or new_price_ars < 0:
+        session.pending_actions.pop(action_id, None)
+        raise HTTPException(status_code=409, detail="El producto o el precio de la solicitud no es válido.")
+    expires_at = min(int(pending["expires_at"]), int(time.time() + 180))
+    proof = make_product_price_approval_proof(
+        session_id, session.subject, action_id, sku, new_price_ars, expires_at
+    )
+    token = await get_mcp_access_token(session)
+    try:
+        result = await call_support_tool(
+            token,
+            "update_product_price",
+            {"sku": sku, "new_price_ars": new_price_ars, "approval_proof": proof},
+            audit_session=session,
+        )
+    except MCPToolFailure as exc:
+        if exc.kind == "forbidden":
+            session.pending_actions.pop(action_id, None)
+            raise HTTPException(status_code=403, detail="MCP/OPA denegó el cambio de precio o el valor está fuera de la política comercial.") from exc
+        if exc.kind == "conflict":
+            session.pending_actions.pop(action_id, None)
+            raise HTTPException(status_code=409, detail="La confirmación venció o no coincide con el cambio solicitado.") from exc
+        raise HTTPException(status_code=503, detail="No se pudo confirmar el cambio en el catálogo local.") from exc
+    session.pending_actions.pop(action_id, None)
+    updated_price_ars = int(result.get("current_price_ars", new_price_ars))
+    formatted_price = f"${updated_price_ars:,}".replace(",", ".")
+    return {
+        "kind": "message",
+        "text": f"Precio actualizado para {result.get('product_name', sku)} ({sku}): {formatted_price} ARS.",
+        "sources": [{"id": sku, "title": "Catálogo sintético de precios"}],
+        "trace": [
+            {"stage": "Confirmación autenticada", "status": "allowed", "detail": "La firma vigente coincide con el sujeto, el SKU y el precio revisado."},
+            {"stage": "MCP / OPA · pricing:update", "status": "allowed", "detail": "MCP verificó la firma y OPA autorizó rol, recurso y precio mínimo."},
+            {"stage": "Catálogo sintético", "status": "executed", "detail": "El precio se actualizó únicamente en la base local de fixtures."},
+        ],
+    }
+
+
 @app.post("/api/actions/{action_id}/cancel")
 async def cancel_action(request: Request, action_id: str) -> dict[str, str]:
     _, session = current_session(request)
     require_csrf(request, session)
-    session.pending_actions.pop(action_id, None)
+    pending = session.pending_actions.pop(action_id, None)
+    if pending:
+        record_event(
+            session,
+            category="tool",
+            title="Acción pendiente cancelada",
+            status="cancelled",
+            detail="La acción se canceló antes de invocar MCP.",
+            payload={"kind": pending.get("kind"), "username": pending.get("username"), "sku": pending.get("sku")},
+        )
     return {"status": "cancelled"}
 
 

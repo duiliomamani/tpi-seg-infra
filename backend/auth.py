@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
 import logging
 import secrets
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlencode
@@ -40,6 +42,9 @@ class UserSession:
     expires_at: float = field(default_factory=lambda: time.time() + settings.SESSION_TTL_SECONDS)
     pending_actions: dict[str, dict[str, Any]] = field(default_factory=dict)
     recent_requests: list[float] = field(default_factory=list)
+    audit_events: deque[dict[str, Any]] = field(default_factory=lambda: deque(maxlen=300), repr=False)
+    audit_subscribers: set[asyncio.Queue[dict[str, Any]]] = field(default_factory=set, repr=False)
+    audit_sequence: int = 0
 
 
 LOGIN_ATTEMPTS: dict[str, LoginAttempt] = {}
@@ -277,6 +282,30 @@ def make_mfa_reset_approval_proof(session_id: str, subject: str, action_id: str,
         "action": "mfa:reset",
         "action_id": action_id,
         "username": username,
+        "exp": expires_at,
+    }
+    encoded = b64url(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+    signature = hmac.new(settings.ACTION_SIGNING_SECRET.encode("utf-8"), encoded.encode("ascii"), hashlib.sha256).digest()
+    return f"{encoded}.{b64url(signature)}"
+
+
+def make_product_price_approval_proof(
+    session_id: str,
+    subject: str,
+    action_id: str,
+    sku: str,
+    new_price_ars: int,
+    expires_at: int,
+) -> str:
+    import json
+
+    payload = {
+        "session": session_id,
+        "sub": subject,
+        "action": "product_price:update",
+        "action_id": action_id,
+        "sku": sku,
+        "new_price_ars": new_price_ars,
         "exp": expires_at,
     }
     encoded = b64url(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))

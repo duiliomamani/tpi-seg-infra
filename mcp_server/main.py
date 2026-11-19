@@ -11,7 +11,17 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver.exceptions import ToolError
 
 from backend import settings
-from backend.store import create_ticket, find_articles, find_ticket, find_user_groups, get_demo_modes, initialize
+from backend.store import (
+    PRODUCT_SKUS,
+    create_ticket,
+    find_articles,
+    find_product,
+    find_ticket,
+    find_user_groups,
+    get_demo_modes,
+    initialize,
+    update_product_price as persist_product_price,
+)
 from mcp_server.keycloak_admin import KeycloakMFAResetError, reset_keycloak_mfa
 from mcp_server.security import (
     KeycloakTokenVerifier,
@@ -21,13 +31,14 @@ from mcp_server.security import (
     verified_subject,
     verify_approval_proof,
     verify_mfa_reset_approval_proof,
+    verify_product_price_approval_proof,
 )
 
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(message)s")
 initialize()
 
-MCP_RESOURCE_URL = os.getenv("MCP_RESOURCE_URL", "http://localhost:8002/mcp")
+MCP_RESOURCE_URL = os.getenv("MCP_RESOURCE_URL", "http://localhost:5102/mcp")
 MCP_ISSUER_URL = settings.OIDC_ISSUER
 mcp = MCPServer(
     "Support Desk MCP",
@@ -107,7 +118,7 @@ async def search_kb(query: str, category: str | None = None) -> dict[str, Any]:
 
 @mcp.tool()
 async def get_my_ticket(ticket_id: str) -> dict[str, Any]:
-    """Consulta un ticket propio o asignado a la cola del equipo de soporte."""
+    """Consulta un ticket; el modo vulnerable local omite OPA sólo para fixtures sintéticos."""
     access, subject = _subject()
     audit_invocation("get_my_ticket", subject["sub"])
     if "support:read" not in access.scopes:
@@ -125,13 +136,27 @@ async def get_my_ticket(ticket_id: str) -> dict[str, Any]:
         "queue": ticket["queue"],
         "status": ticket["status"],
     }
-    allowed, reason = await policy_decision(action="ticket:read", subject=subject, resource=resource)
+    roles = set(subject["roles"])
+    policy_would_allow = bool(subject["active"]) and (
+        (bool(roles & {"employee", "support_l1", "support_admin"}) and ticket["owner_id"] == subject["sub"])
+        or "support_admin" in roles
+        or ("support_l1" in roles and ticket["queue"] in subject["assigned_queues"])
+    )
+    ticket_demo_mode = get_demo_modes()["ticket_demo_mode"]
+    if ticket_demo_mode == "vulnerable":
+        # Reproduces a BOLA/IDOR on synthetic tickets only: authentication and scope
+        # checks above remain active, but object-level OPA authorization is omitted.
+        allowed, reason = True, "demo_missing_object_authorization"
+    else:
+        allowed, reason = await policy_decision(action="ticket:read", subject=subject, resource=resource)
     audit("get_my_ticket", subject["sub"], normalized, allowed, reason)
     if not allowed:
         # The same response for missing and forbidden IDs avoids disclosing ticket existence.
         return {"available": False, "message": "No encontré un ticket disponible para tu usuario."}
     return {
         "available": True,
+        "authorization_bypassed": ticket_demo_mode == "vulnerable",
+        "vulnerability_triggered": ticket_demo_mode == "vulnerable" and not policy_would_allow,
         "ticket": {
             "id": ticket["id"],
             "summary": ticket["summary"],
@@ -174,6 +199,112 @@ async def list_user_groups(username: str) -> dict[str, Any]:
     if not allowed:
         raise ToolError("La política de acceso no autorizó consultar los grupos de esa persona.")
     return {"available": True, "username": normalized, "groups": target["groups"]}
+
+
+@mcp.tool()
+async def get_internal_product_pricing(sku: str) -> dict[str, Any]:
+    """Consulta precio, costo y margen de productos sintéticos de uso interno."""
+    access, subject = _subject()
+    audit_invocation("get_internal_product_pricing", subject["sub"])
+    if "support:read" not in access.scopes:
+        raise ToolError("La sesión no tiene permiso de lectura.")
+    normalized = sku.strip().upper()
+    if normalized not in PRODUCT_SKUS:
+        raise ToolError("El producto debe pertenecer al catálogo sintético permitido.")
+    product = find_product(normalized)
+    if not product:
+        audit("get_internal_product_pricing", subject["sub"], normalized, False, "not_found")
+        raise ToolError("El producto sintético no está disponible.")
+
+    if get_demo_modes()["product_data_demo_mode"] == "vulnerable":
+        allowed, reason = True, "demo_missing_authorization"
+    else:
+        resource = {
+            "sku": normalized,
+            "classification": product["classification"],
+            "department": product["department"],
+        }
+        allowed, reason = await policy_decision(
+            action="pricing:read_internal", subject=subject, resource=resource
+        )
+    audit("get_internal_product_pricing", subject["sub"], normalized, allowed, reason)
+    if reason == "policy_unavailable":
+        raise ToolError("La política de acceso no pudo verificarse; la consulta fue denegada.")
+    if not allowed:
+        raise ToolError("La política de acceso no autorizó consultar el costo interno del producto.")
+    return {
+        "sku": normalized,
+        "product_name": product["product_name"],
+        "current_price_ars": product["current_price_ars"],
+        "unit_cost_ars": product["unit_cost_ars"],
+        "margin_ars": product["current_price_ars"] - product["unit_cost_ars"],
+    }
+
+
+@mcp.tool()
+async def update_product_price(
+    sku: str,
+    new_price_ars: int,
+    approval_proof: str = "",
+) -> dict[str, Any]:
+    """Actualiza sólo el precio de un producto sintético del catálogo local."""
+    access, subject = _subject()
+    audit_invocation("update_product_price", subject["sub"])
+    if "support:write" not in access.scopes:
+        raise ToolError("La sesión no tiene permiso para solicitar esta operación.")
+    normalized = sku.strip().upper()
+    if normalized not in PRODUCT_SKUS:
+        raise ToolError("El producto debe pertenecer al catálogo sintético permitido.")
+    if type(new_price_ars) is not int or new_price_ars < 0:
+        raise ToolError("El precio debe ser un monto entero no negativo en pesos argentinos.")
+    product = find_product(normalized)
+    if not product:
+        audit("update_product_price", subject["sub"], normalized, False, "not_found")
+        raise ToolError("El producto sintético no está disponible.")
+
+    demo_mode = get_demo_modes()["product_data_demo_mode"]
+    if demo_mode == "vulnerable":
+        allowed, reason = True, "demo_missing_authorization_and_confirmation"
+    else:
+        approval = verify_product_price_approval_proof(
+            approval_proof,
+            subject=subject["sub"],
+            sku=normalized,
+            new_price_ars=new_price_ars,
+        )
+        if not approval:
+            audit("update_product_price", subject["sub"], normalized, False, "missing_or_invalid_confirmation")
+            if "support_admin" in subject["roles"]:
+                raise ToolError("El cambio requiere una confirmación autenticada vigente.")
+            raise ToolError("La política de acceso no autorizó modificar el precio del producto.")
+        resource = {
+            "sku": normalized,
+            "classification": product["classification"],
+            "department": product["department"],
+            "new_price_ars": new_price_ars,
+            "minimum_price_ars": product["minimum_price_ars"],
+            "confirmed": True,
+        }
+        allowed, reason = await policy_decision(
+            action="pricing:update", subject=subject, resource=resource
+        )
+
+    if allowed and demo_mode == "vulnerable":
+        reason = "demo_missing_authorization_and_confirmation"
+    audit("update_product_price", subject["sub"], normalized, allowed, reason)
+    if reason == "policy_unavailable":
+        raise ToolError("La política de acceso no pudo verificarse; el cambio fue denegado.")
+    if not allowed:
+        raise ToolError("La política de acceso no autorizó modificar el precio del producto.")
+    updated = persist_product_price(normalized, new_price_ars)
+    if not updated:
+        raise ToolError("No se pudo actualizar el precio del producto sintético.")
+    return {
+        "updated": True,
+        "sku": normalized,
+        "product_name": updated["product_name"],
+        "current_price_ars": updated["current_price_ars"],
+    }
 
 
 @mcp.tool()

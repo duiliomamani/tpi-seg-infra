@@ -82,3 +82,21 @@ allow if {
 	"support_admin" in input.subject.roles
 	input.resource.confirmed == true
 }
+
+allow if {
+	input.subject.active == true
+	input.action == "pricing:read_internal"
+	"support_admin" in input.subject.roles
+	input.resource.classification == "confidential"
+	input.resource.department == "commercial"
+}
+
+allow if {
+	input.subject.active == true
+	input.action == "pricing:update"
+	"support_admin" in input.subject.roles
+	input.resource.classification == "confidential"
+	input.resource.department == "commercial"
+	input.resource.confirmed == true
+	input.resource.new_price_ars >= input.resource.minimum_price_ars
+}

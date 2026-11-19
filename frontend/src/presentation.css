@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+/* Projector scale for supporting copy and controls in the slide deck. */
+.presentation-wrapper .text-xs { font-size: 14px !important; }
+.presentation-wrapper .text-sm { font-size: 16px !important; }
+.presentation-wrapper .text-base { font-size: 18px !important; }
+.presentation-wrapper .text-lg { font-size: 20px !important; }

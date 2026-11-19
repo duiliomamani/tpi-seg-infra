@@ -7,8 +7,8 @@ def env(name: str, default: str) -> str:
     return os.getenv(name, default).strip()
 
 
-APP_ORIGIN = env("APP_ORIGIN", "http://localhost:8000")
-KEYCLOAK_PUBLIC_URL = env("KEYCLOAK_PUBLIC_URL", "http://localhost:8080").rstrip("/")
+APP_ORIGIN = env("APP_ORIGIN", "http://localhost:5100")
+KEYCLOAK_PUBLIC_URL = env("KEYCLOAK_PUBLIC_URL", "http://localhost:5101").rstrip("/")
 KEYCLOAK_INTERNAL_URL = env("KEYCLOAK_INTERNAL_URL", "http://keycloak:8080").rstrip("/")
 REALM = env("KEYCLOAK_REALM", "support-poc")
 OIDC_ISSUER = f"{KEYCLOAK_PUBLIC_URL}/realms/{REALM}"
