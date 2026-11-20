@@ -296,37 +296,20 @@ const slides = [
     )
   },
 
-  // SLIDE 6: Escenarios demostrables A–H
+  // SLIDE 6: Escenarios de Soporte Empresarial
   {
     content: () => {
-      const scenarios = [
-        { id: 'A', title: 'Consulta normal', detail: 'Alice consulta la guía aprobada de VPN y la respuesta cita KB-VPN-WIN.' },
-        { id: 'B', title: 'Inyección indirecta', detail: 'La nota hostil intenta resetear el MFA de Bob; Seguro la deja en cuarentena.' },
-        { id: 'C', title: 'Acceso a objetos ajenos', detail: 'Vulnerable revela el ticket T-203 y los grupos de Bob; Seguro los deniega.' },
-        { id: 'D', title: 'Política falsa', detail: 'Una política falsa presembrada cruza la cuarentena en Vulnerable. No hay ingesta real.' },
-        { id: 'E', title: 'Inyección directa y agencia', detail: 'En Seguro, el reset MFA exige rol, confirmación autenticada y OPA.' },
-        { id: 'F', title: 'Grupos sin autorización', detail: 'En Seguro, OPA deniega a Alice la consulta de grupos de Bob.' },
-        { id: 'G', title: 'Cambio de precio', detail: 'El catálogo es sintético; cambiar precios en Seguro requiere autorización y confirmación.' },
-        { id: 'H', title: 'Costo y margen', detail: 'En Seguro, Alice no puede leer costos ni márgenes sintéticos.' },
-      ];
-
       return (
         <div className="flex flex-col h-full justify-center px-12 relative z-10 max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-white mb-3 flex items-center gap-4">
-            <span className="text-cyan-400">05.</span> Escenarios de la demo A–H
+          <h2 className="text-4xl font-bold text-white mb-8 flex items-center gap-4">
+            <span className="text-cyan-400">05.</span> Escenarios de Soporte Empresarial
           </h2>
-          <p className="text-slate-300 text-base mb-6">Ocho pruebas de acceso y uso de herramientas con datos sintéticos.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {scenarios.map((scenario) => (
-              <GlassCard key={scenario.id} className="p-4 flex items-start gap-4">
-                <span className="w-9 h-9 shrink-0 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 font-bold flex items-center justify-center">{scenario.id}</span>
-                <div className="min-w-0">
-                  <h3 className="text-white font-bold mb-1">{scenario.title}</h3>
-                  <p className="text-slate-300 text-sm leading-relaxed">{scenario.detail}</p>
-                </div>
-              </GlassCard>
-            ))}
-          </div>
+          <GlassCard className="mx-auto flex max-w-4xl items-center gap-8 p-10 md:p-14">
+            <Workflow size={48} className="shrink-0 text-cyan-300" />
+            <p className="text-xl leading-relaxed text-slate-200">
+              La demo presenta un asistente de IA para soporte empresarial: responde consultas, ayuda a gestionar solicitudes y aplica controles de seguridad antes de acceder a información o ejecutar acciones.
+            </p>
+          </GlassCard>
         </div>
       );
     }
