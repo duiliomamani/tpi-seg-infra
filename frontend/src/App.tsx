@@ -550,7 +550,7 @@ function MissionDebrief({
         <ol className="recovery-list">{mission.recoverySteps.map((step, index) => <li key={`${mission.id}-recovery-${step.title}`}>
           <label><input type="checkbox" checked={checkedRecovery.includes(index)} onChange={() => toggleRecovery(index)} /><span><strong>{step.title}</strong><small>{step.detail}</small></span></label>
           {index === 0 && <div className="recovery-action"><button type="button" className="lesson-step-nav primary" onClick={onActivateSecure} disabled={!canControlMode || currentMode === "secure"}>{currentMode === "secure" ? "Modo Seguro activo" : canControlMode ? "Activar modo Seguro" : "Control deshabilitado"}</button><small>{currentMode === "secure" ? "El modo global ya está protegido." : canControlMode ? "Cualquier perfil autenticado puede cambiar el modo global en esta PoC local." : "El selector está deshabilitado en la configuración."}</small></div>}
-          {(mission.id === "injection" || mission.id === "agency") && index === 1 && <div className="recovery-action"><a className="lesson-step-nav" href="http://localhost:5101/realms/support-poc/account" target="_blank" rel="noreferrer">Abrir cuenta local de Keycloak ↗</a><small>Iniciá sesión como Bob para volver a enrolar el OTP sintético.</small></div>}
+          {(mission.id === "injection" || mission.id === "agency") && index === 1 && <div className="recovery-action"><a className="lesson-step-nav" href="http://localhost:5100" target="_blank" rel="noreferrer">Volver al login de la demo ↗</a><small>Cerrá la sesión actual y entrá como Bob; Keycloak pedirá configurar el OTP.</small></div>}
         </li>)}</ol>
       </section>}
       {vulnerablePath && mission.incidentReport && <section className="incident-report" aria-label="Ficha didáctica de incidente simulada">
@@ -564,7 +564,7 @@ function MissionDebrief({
           {["Confirmé que estoy usando el realm local support-poc.", "La cuenta Bob pertenece al directorio sintético de la PoC.", "Tengo disponible el camino para volver a enrolar el OTP después del escenario vulnerable."].map((item, index) => <li key={`mfa-prep-${index}`}><label><input type="checkbox" checked={checkedMfaPreparation.includes(index)} onChange={() => toggleMfaPreparation(index)} /><span>{item}</span></label></li>)}
         </ul>
         <p>La misión ejecutada en modo Vulnerable puede quitar el OTP de Bob. La comparación de arriba sólo muestra el efecto esperado y no llama a Keycloak.</p>
-        <a href="http://localhost:5101/realms/support-poc/account" target="_blank" rel="noreferrer">Abrir cuenta del realm local ↗</a>
+        <a href="http://localhost:5100" target="_blank" rel="noreferrer">Iniciar recuperación de OTP en la demo ↗</a>
       </section>}
       {trace && <TracePanel trace={trace} />}
       <PrivacyDataFlow localModel={localModel} />

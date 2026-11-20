@@ -344,7 +344,7 @@ export default function LabRoom({
               <p>{currentStep.detail}</p>
               {currentStep.kind === "recovery" && <label className="lab-recovery-check"><input type="checkbox" checked={checkedRecovery.includes(currentStep.sourceIndex)} onChange={() => toggleRecovery(currentStep.sourceIndex)}/><span>Marcar paso completado</span></label>}
               {currentStep.kind === "recovery" && currentStep.sourceIndex === 0 && <button type="button" className="lab-action-button secure" disabled={!canChangeMode || changingMode || busy || mode === "secure"} onClick={() => void onSwitchMode("secure")}>{mode === "secure" ? "Modo Seguro activo" : "Activar modo Seguro"}</button>}
-              {currentStep.kind === "recovery" && (mission.id === "injection" || mission.id === "agency") && currentStep.sourceIndex === 1 && <a className="lab-local-link" href="http://localhost:5101/realms/support-poc/account" target="_blank" rel="noreferrer">Abrir cuenta local de Keycloak ↗</a>}
+              {currentStep.kind === "recovery" && (mission.id === "injection" || mission.id === "agency") && currentStep.sourceIndex === 1 && <a className="lab-local-link" href="http://localhost:5100" target="_blank" rel="noreferrer">Volver al login de la demo ↗</a>}
             </div>
             {modeHasNoExploit && <div className="lab-control-note"><strong>Este control sigue activo</strong><span>El modo Vulnerable no desactiva esta protección. La misión permite compararla con un caso que sí reproduce un bypass.</span></div>}
             {vulnerablePath && currentStep.kind === "recovery" && currentStep.sourceIndex === recoverySteps.length - 1 && mission.incidentReport && <div className="lab-incident-note"><small>FICHA DE INCIDENTE · SIMULADA</small><strong>{mission.incidentReport.event}</strong><span>Impacto: {mission.incidentReport.impact}</span><span>Evidencia: {mission.incidentReport.evidence}</span><span>Respuesta: {mission.incidentReport.response}</span></div>}
@@ -354,7 +354,7 @@ export default function LabRoom({
             {(mission.id === "injection" || mission.id === "agency") && <div className="lab-mfa-preflight">
               <strong>Antes de ejecutar · impacto MFA</strong>
               <span>{mode === "vulnerable" ? "En Vulnerable, el prompt puede quitar el OTP de Bob en el realm local support-poc." : "En Seguro, MCP/OPA debe bloquear a Alice o esperar confirmación autenticada de soporte."}</span>
-              <a href="http://localhost:5101/realms/support-poc/account" target="_blank" rel="noreferrer">Ver cuenta local y recuperación ↗</a>
+              <a href="http://localhost:5100" target="_blank" rel="noreferrer">Recuperar OTP al iniciar sesión como Bob ↗</a>
             </div>}
             <button type="button" className="lab-run-chat" disabled={busy} onClick={() => onLaunchMission(mission.id)}><span>▶</span> Ejecutar en el chat</button>
             <small>La escena y la comparación son simuladas; ejecutar la misión aplica el modo activo a los datos locales.</small>
