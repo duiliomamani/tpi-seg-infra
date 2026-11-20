@@ -55,7 +55,7 @@ const slides = [
     content: () => (
       <div className="flex flex-col items-center justify-center h-full text-center px-8 relative z-10 w-full max-w-5xl mx-auto">
         <div className="mb-8 inline-flex items-center gap-3 px-6 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-semibold tracking-widest text-sm uppercase">
-          <ShieldAlert size={16} /> Unidad Nro. 6 · 2026
+          <ShieldAlert size={16} /> Unidad Nro. 6 · 2025
         </div>
         <h1 className="text-5xl md:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-teal-200 mb-6 leading-tight drop-shadow-lg">
           Seguridad en <br/> Inteligencia Artificial
@@ -335,7 +335,7 @@ const slides = [
               </div>
             ))}
           </div>
-          <p className="text-slate-500 text-xs mt-6">LLM09 (vectores y embeddings) se presenta como riesgo relacionado, pero no se implementa en esta PoC.</p>
+          <p className="text-slate-500 text-xs mt-6">LLM08 (vectores y embeddings) se presenta como riesgo relacionado, pero no se implementa en esta PoC.</p>
         </div>
       );
     }
