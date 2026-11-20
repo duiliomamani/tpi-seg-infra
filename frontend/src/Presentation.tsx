@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   ShieldAlert, Bot, Cpu, Database, Key,
   ShieldCheck, ArrowRight, Server, Lock,
-  AlertTriangle, UserX, Network, ChevronLeft,
+  AlertTriangle, UserX, ChevronLeft,
   ChevronRight, Fingerprint, FileCode2,
   Workflow, X, Maximize, Minimize
 } from 'lucide-react';
@@ -125,7 +125,7 @@ const slides = [
           <span className="text-orange-400">02.</span> Riesgos seleccionados · OWASP LLM Top 10 2025
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <GlassCard className="p-6 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-red-500">
             <FileCode2 size={40} className="text-red-400 mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">LLM01: Prompt Injection</h3>
@@ -150,19 +150,11 @@ const slides = [
             </p>
           </GlassCard>
 
-          <GlassCard className="p-6 md:col-span-1 md:col-start-1 md:ml-12 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-cyan-500">
+          <GlassCard className="p-6 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-cyan-500">
             <Workflow size={40} className="text-cyan-400 mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">LLM04: Data and Model Poisoning</h3>
             <p className="text-slate-300 text-sm">
               Datos o modelos alterados pueden cambiar respuestas y decisiones del sistema.
-            </p>
-          </GlassCard>
-
-          <GlassCard className="p-6 md:col-span-2 md:mr-12 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-indigo-500">
-            <Network size={40} className="text-indigo-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM08: Vector and Embedding Weaknesses</h3>
-            <p className="text-slate-300 text-sm">
-              Riesgo relevante, pero fuera de esta PoC: usa búsqueda por palabras en SQLite y no implementa base vectorial ni embeddings.
             </p>
           </GlassCard>
         </div>
@@ -335,7 +327,6 @@ const slides = [
               </div>
             ))}
           </div>
-          <p className="text-slate-500 text-xs mt-6">LLM08 (vectores y embeddings) se presenta como riesgo relacionado, pero no se implementa en esta PoC.</p>
         </div>
       );
     }
