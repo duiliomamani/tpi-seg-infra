@@ -122,7 +122,7 @@ const slides = [
     content: () => (
       <div className="flex flex-col h-full justify-center px-12 relative z-10 max-w-7xl mx-auto">
         <h2 className="text-4xl font-bold text-white mb-10 flex items-center gap-4">
-          <span className="text-orange-400">02.</span> Riesgos seleccionados · OWASP LLM Top 10 2026
+          <span className="text-orange-400">02.</span> Riesgos seleccionados · OWASP LLM Top 10 2025
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -144,7 +144,7 @@ const slides = [
 
           <GlassCard className="p-6 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-purple-500">
             <Database size={40} className="text-purple-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM03: Excessive Agency</h3>
+            <h3 className="text-xl font-bold text-white mb-2">LLM06: Excessive Agency</h3>
             <p className="text-slate-300 text-sm">
               El agente dispone de permisos o autonomía que pueden llevarlo a ejecutar acciones fuera del propósito autorizado.
             </p>
@@ -152,7 +152,7 @@ const slides = [
 
           <GlassCard className="p-6 md:col-span-1 md:col-start-1 md:ml-12 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-cyan-500">
             <Workflow size={40} className="text-cyan-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM05: Data and Model Poisoning</h3>
+            <h3 className="text-xl font-bold text-white mb-2">LLM04: Data and Model Poisoning</h3>
             <p className="text-slate-300 text-sm">
               Datos o modelos alterados pueden cambiar respuestas y decisiones del sistema.
             </p>
@@ -160,7 +160,7 @@ const slides = [
 
           <GlassCard className="p-6 md:col-span-2 md:mr-12 hover:-translate-y-2 transition-transform duration-300 border-t-4 border-t-indigo-500">
             <Network size={40} className="text-indigo-400 mb-4" />
-            <h3 className="text-xl font-bold text-white mb-2">LLM09: Vector and Embedding Weaknesses</h3>
+            <h3 className="text-xl font-bold text-white mb-2">LLM08: Vector and Embedding Weaknesses</h3>
             <p className="text-slate-300 text-sm">
               Riesgo relevante, pero fuera de esta PoC: usa búsqueda por palabras en SQLite y no implementa base vectorial ni embeddings.
             </p>
@@ -383,7 +383,7 @@ const slides = [
       <div className="flex flex-col h-full justify-center px-12 relative z-10 max-w-6xl mx-auto">
         <h2 className="text-4xl font-bold text-white mb-10">Fuentes principales</h2>
         <GlassCard className="p-10 grid gap-6 text-lg">
-          <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/" target="_blank" rel="noreferrer">OWASP GenAI LLM Top 10 2026</a>
+          <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/" target="_blank" rel="noreferrer">OWASP Top 10 for LLM Applications 2025</a>
           <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://owasp.org/projects/mcp-top-10?tab=top10" target="_blank" rel="noreferrer">OWASP MCP Top 10 2025</a>
           <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://safety.google/safety/saif/" target="_blank" rel="noreferrer">Google Secure AI Framework (SAIF)</a>
           <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://www.uber.com/us/en/blog/designing-mcp-gateway/" target="_blank" rel="noreferrer">Uber, Designing MCP Gateway</a>
