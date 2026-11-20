@@ -162,7 +162,7 @@ const slides = [
             <Network size={40} className="text-indigo-400 mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">LLM09: Vector and Embedding Weaknesses</h3>
             <p className="text-slate-300 text-sm">
-              Fallos en el control de acceso de bases vectoriales, devolviendo fragmentos de texto reservados en búsquedas semánticas.
+              Riesgo relevante, pero fuera de esta PoC: usa búsqueda por palabras en SQLite y no implementa base vectorial ni embeddings.
             </p>
           </GlassCard>
         </div>
@@ -223,86 +223,125 @@ const slides = [
           </div>
         </div>
 
-        <GlassCard className="p-4 bg-white/5 flex justify-between items-center border-l-4 border-l-teal-500">
-          <span className="text-slate-300 font-medium">Marcos de Referencia y Tecnologías:</span>
-          <div className="flex gap-6 text-cyan-300 font-semibold text-sm">
-            <span>Google SAIF</span>
-            <span>•</span>
-            <span>Uber MCP Gateway</span>
-            <span>•</span>
-            <span>Auth0 / Keycloak (OAuth 2.1)</span>
-          </div>
+        <GlassCard className="p-4 bg-white/5 grid gap-2 border-l-4 border-l-teal-500 text-sm text-slate-300">
+          <p><strong className="text-cyan-300">Referencias:</strong> Google SAIF y Uber MCP Gateway. Son marcos externos, no componentes de esta PoC.</p>
+          <p><strong className="text-cyan-300">Implementación de la PoC:</strong> Keycloak con OIDC Authorization Code + PKCE, OPA, servidor MCP y Qwen en Ollama.</p>
         </GlassCard>
       </div>
     )
   },
 
-  // SLIDE 5: La Prueba - MCP + RAG
+  // SLIDE 5: Flujo real de autorización
   {
     content: () => (
       <div className="flex flex-col h-full justify-center px-12 relative z-10 max-w-7xl mx-auto">
-        <h2 className="text-4xl font-bold text-white mb-12 flex items-center gap-4">
-          <span className="text-blue-400">04.</span> Laboratorio: MCP + RAG
+        <h2 className="text-4xl font-bold text-white mb-8 flex items-center gap-4">
+          <span className="text-blue-400">04.</span> Flujo real de autorización
         </h2>
 
-        <GlassCard className="p-10 w-full relative overflow-hidden">
-          <h3 className="text-xl text-white font-semibold mb-10 text-center uppercase tracking-widest">Flujo de Autorización Segura</h3>
-
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-
-            {/* User */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center border-2 border-slate-600 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+        <GlassCard className="p-8 w-full relative overflow-hidden">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-5 relative z-10">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center border-2 border-slate-600">
                 <Fingerprint size={36} className="text-slate-300" />
               </div>
-              <span className="text-slate-300 font-medium">Usuario / Prompt</span>
+              <span className="text-slate-300 font-medium">Usuario<br />Chat + BFF</span>
             </div>
 
-            <ArrowRight size={32} className="text-slate-600 hidden md:block" />
+            <ArrowRight size={28} className="text-slate-600 hidden md:block" />
 
-            {/* AI Agent */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-24 h-24 bg-cyan-900/50 rounded-2xl flex items-center justify-center border border-cyan-500/50 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
-                <Bot size={48} className="text-cyan-400" />
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-20 h-20 bg-cyan-900/50 rounded-2xl flex items-center justify-center border border-cyan-500/50">
+                <Bot size={42} className="text-cyan-400" />
               </div>
-              <span className="text-cyan-300 font-medium">Agente LLM</span>
+              <span className="text-cyan-300 font-medium">Qwen<br />Ollama local</span>
             </div>
 
-            <ArrowRight size={32} className="text-slate-600 hidden md:block" />
+            <ArrowRight size={28} className="text-slate-600 hidden md:block" />
 
-            {/* MCP Gateway */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-24 h-24 bg-indigo-900/50 rounded-xl flex items-center justify-center border border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
-                <Server size={48} className="text-indigo-400" />
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-20 h-20 bg-indigo-900/50 rounded-xl flex items-center justify-center border border-indigo-500/50">
+                <Server size={42} className="text-indigo-400" />
               </div>
-              <span className="text-indigo-300 font-medium">MCP Gateway (OPA)</span>
+              <span className="text-indigo-300 font-medium">Servidor MCP<br />valida JWT</span>
             </div>
 
-            <ArrowRight size={32} className="text-slate-600 hidden md:block" />
+            <ArrowRight size={28} className="text-slate-600 hidden md:block" />
 
-            {/* Target Tool/RAG */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-lg w-48">
-                <ShieldCheck size={24} className="text-emerald-400" />
-                <span className="text-emerald-300 text-sm font-medium">Lectura: OK</span>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-20 h-20 bg-emerald-900/40 rounded-xl flex items-center justify-center border border-emerald-500/40">
+                <ShieldCheck size={42} className="text-emerald-400" />
               </div>
-              <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 p-3 rounded-lg w-48">
-                <ShieldAlert size={24} className="text-red-400" />
-                <span className="text-red-300 text-sm font-medium">Escritura: Bloqueada</span>
-              </div>
+              <span className="text-emerald-300 font-medium">OPA<br />decide por recurso</span>
             </div>
 
+            <ArrowRight size={28} className="text-slate-600 hidden md:block" />
+
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-20 h-20 bg-slate-800 rounded-xl flex items-center justify-center border border-slate-600">
+                <Database size={42} className="text-slate-300" />
+              </div>
+              <span className="text-slate-300 font-medium">SQLite sintética<br />Keycloak local</span>
+            </div>
           </div>
 
-          <div className="mt-12 text-center text-slate-400 text-sm bg-slate-950/50 p-4 rounded-xl">
-            <strong>Evaluación de Agencia Excesiva:</strong> El LLM elige la herramienta, pero el Gateway (Capa externa con OPA y tokens) valida la sesión y deniega modificaciones de roles o colas no autorizadas.
+          <p className="mt-8 text-center text-slate-300 text-sm bg-slate-950/50 p-4 rounded-xl">
+            El modelo propone la herramienta; el BFF valida nombre y argumentos. MCP verifica el token y consulta OPA. Los efectos quedan limitados a datos sintéticos y al realm local <code>support-poc</code>.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+            <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl">
+              <h3 className="text-emerald-300 font-bold mb-2">Modo Seguro</h3>
+              <p className="text-slate-300 text-sm">Las lecturas se autorizan por usuario y recurso. Las acciones sensibles requieren el rol <code>support_admin</code>, confirmación autenticada y aprobación de OPA; las solicitudes no autorizadas se deniegan.</p>
+            </div>
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl">
+              <h3 className="text-red-300 font-bold mb-2">Modo Vulnerable</h3>
+              <p className="text-slate-300 text-sm">La demo omite controles seleccionados para mostrar el impacto en tickets y grupos sintéticos, precios ficticios o el MFA de una cuenta local.</p>
+            </div>
           </div>
         </GlassCard>
       </div>
     )
   },
 
-  // SLIDE 6: Conclusión
+  // SLIDE 6: Escenarios demostrables A–H
+  {
+    content: () => {
+      const scenarios = [
+        { id: 'A', title: 'Consulta normal', detail: 'Alice consulta la guía aprobada de VPN; la respuesta cita KB-VPN-WIN.' },
+        { id: 'B', title: 'Inyección indirecta', detail: 'Una nota no aprobada intenta inducir el reset de MFA de Bob; Seguro la mantiene en cuarentena.' },
+        { id: 'C', title: 'Acceso a objetos ajenos', detail: 'T-203 y los grupos de Bob se exponen en Vulnerable y se deniegan en Seguro.' },
+        { id: 'D', title: 'Política falsa', detail: 'Un fixture presembrado cruza la cuarentena en Vulnerable; no hay pipeline real de ingesta.' },
+        { id: 'E', title: 'Inyección directa y agencia', detail: 'El reset de MFA requiere rol, confirmación autenticada y OPA en Seguro.' },
+        { id: 'F', title: 'Grupos sin autorización', detail: 'OPA bloquea la consulta de grupos de Bob para Alice en Seguro.' },
+        { id: 'G', title: 'Cambio de precio', detail: 'El catálogo es sintético; Seguro exige autorización y confirmación para modificarlo.' },
+        { id: 'H', title: 'Costo y margen', detail: 'Los datos comerciales ficticios se deniegan a Alice en Seguro.' },
+      ];
+
+      return (
+        <div className="flex flex-col h-full justify-center px-12 relative z-10 max-w-7xl mx-auto">
+          <h2 className="text-4xl font-bold text-white mb-4 flex items-center gap-4">
+            <span className="text-cyan-400">05.</span> Escenarios de la demo A–H
+          </h2>
+          <p className="text-slate-300 text-lg mb-8">Las fallas y los efectos se limitan a cuentas, tickets, políticas y productos sintéticos.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
+            {scenarios.map((scenario) => (
+              <div key={scenario.id} className="flex gap-4 items-start border-b border-white/10 pb-4">
+                <span className="text-cyan-300 font-bold text-lg">{scenario.id}</span>
+                <div>
+                  <h3 className="text-white font-bold mb-1">{scenario.title}</h3>
+                  <p className="text-slate-300 text-sm leading-relaxed">{scenario.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-slate-500 text-xs mt-6">LLM09 (vectores y embeddings) se presenta como riesgo relacionado, pero no se implementa en esta PoC.</p>
+        </div>
+      );
+    }
+  },
+
+  // SLIDE 7: Conclusión
   {
     content: (onExit?: () => void) => (
       <div className="flex flex-col items-center justify-center h-full text-center px-8 relative z-10 w-full max-w-4xl mx-auto">
@@ -334,6 +373,22 @@ const slides = [
           </button>
         )}
 
+      </div>
+    )
+  },
+
+  // SLIDE 8: Fuentes
+  {
+    content: () => (
+      <div className="flex flex-col h-full justify-center px-12 relative z-10 max-w-6xl mx-auto">
+        <h2 className="text-4xl font-bold text-white mb-10">Fuentes principales</h2>
+        <GlassCard className="p-10 grid gap-6 text-lg">
+          <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/" target="_blank" rel="noreferrer">OWASP GenAI LLM Top 10 2026</a>
+          <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://owasp.org/projects/mcp-top-10?tab=top10" target="_blank" rel="noreferrer">OWASP MCP Top 10 2025</a>
+          <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://safety.google/safety/saif/" target="_blank" rel="noreferrer">Google Secure AI Framework (SAIF)</a>
+          <a className="text-cyan-300 hover:text-cyan-100 underline" href="https://www.uber.com/us/en/blog/designing-mcp-gateway/" target="_blank" rel="noreferrer">Uber, Designing MCP Gateway</a>
+          <p className="text-slate-400 text-sm">SAIF y Uber MCP Gateway son referencias externas. La PoC implementa Keycloak, OPA, MCP y Qwen/Ollama.</p>
+        </GlassCard>
       </div>
     )
   }
